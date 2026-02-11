@@ -8,6 +8,10 @@
 
 /* Begin PBXFileReference section */
 		0F5F8BE22F3C4FD30057ABB4 /* box1.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = box1.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0F5F8BF02F3C66400057ABB4 /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLAUDE.md; sourceTree = "<group>"; };
+		0F5F8BF12F3C66400057ABB4 /* ARCHITECTURE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ARCHITECTURE.md; sourceTree = "<group>"; };
+		0F5F8BF22F3C66400057ABB4 /* ROADMAP.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ROADMAP.md; sourceTree = "<group>"; };
+		0F5F8BF32F3C66400057ABB4 /* SPEC.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SPEC.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -32,6 +36,8 @@
 		0F5F8BD92F3C4FD30057ABB4 = {
 			isa = PBXGroup;
 			children = (
+				0F5F8BF02F3C66400057ABB4 /* CLAUDE.md */,
+				0F5F8BF42F3C66400057ABB4 /* docs */,
 				0F5F8BE42F3C4FD30057ABB4 /* box1 */,
 				0F5F8BE32F3C4FD30057ABB4 /* Products */,
 			);
@@ -43,6 +49,16 @@
 				0F5F8BE22F3C4FD30057ABB4 /* box1.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		0F5F8BF42F3C66400057ABB4 /* docs */ = {
+			isa = PBXGroup;
+			children = (
+				0F5F8BF12F3C66400057ABB4 /* ARCHITECTURE.md */,
+				0F5F8BF22F3C66400057ABB4 /* ROADMAP.md */,
+				0F5F8BF32F3C66400057ABB4 /* SPEC.md */,
+			);
+			path = docs;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
