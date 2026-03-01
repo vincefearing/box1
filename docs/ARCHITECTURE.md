@@ -159,8 +159,19 @@ Compare count vs local JSON count
     Persist to SwiftData
 ```
 
+## Future: Supabase Backend
+
+When a web app version is built, Supabase will handle cloud sync across platforms.
+
+- **SwiftData stays** as the local cache on iOS (offline support)
+- **Supabase** becomes the source of truth for user collection data
+- Sync strategy: local-first, push changes to Supabase when online, pull on launch
+- Web app reads/writes directly to Supabase
+- Keep all data models serializable and clean to make migration straightforward
+
 ## Dependencies (Swift Packages)
 
 TBD — will be added as we build each phase. Likely candidates:
 - None for Phase 1-2 (all Apple frameworks)
 - Anthropic Swift SDK or raw URLSession for Claude API in Phase 3
+- supabase-swift for future backend integration
