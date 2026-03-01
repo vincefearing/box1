@@ -36,7 +36,7 @@ def parse_pokemon_data(html, name):
     pokemon_sprites = get_sprites(soup, name)
     location_data = get_location_info(soup)
     generation = get_generation(dex_number)
-    descriptions = get_descriptions(soup, generation)
+    description = get_descriptions(soup, generation)
     height = get_height_weight(soup, "Height")
     weight = get_height_weight(soup, "Weight")
     regional_dex_numbers = get_regional_dex_numbers(soup)
@@ -49,7 +49,7 @@ def parse_pokemon_data(html, name):
         "pokemon_sprites": pokemon_sprites,
         "generation": generation,
         "location_data": location_data,
-        "descriptions": descriptions,
+        "descriptions": description,
         "height": height,
         "weight": weight,
         "regional_dex_numbers": regional_dex_numbers,
@@ -222,34 +222,24 @@ def get_generation(dex_number):
 def get_descriptions(soup, generation):
     anchor = soup.find("div", id="dex-flavor")
 
-    if anchor:
-        debut_games = GENERATION_DEBUT_GAMES.get(generation,[])
-        description_table = anchor.find_next("table")
-        row_list = description_table.find_all("tr")
-        descriptions = {}
+    if not anchor:
+        return None
 
-        if row_list:
-            for row in row_list:
-                game_names = []
-                header = row.find("th")
+    debut_games = GENERATION_DEBUT_GAMES.get(generation, [])
+    first_game = debut_games[0] if debut_games else None
+    description_table = anchor.find_next("table")
+    row_list = description_table.find_all("tr")
 
-                if header:
-                    span_tags = header.find_all("span")
-                    for span in span_tags:
-                        name = span.get_text(strip=True)
-                        game_names.append(name)
-
+    for row in row_list:
+        header = row.find("th")
+        if header:
+            game_names = [span.get_text(strip=True) for span in header.find_all("span")]
+            if first_game in game_names:
                 description_cell = row.find("td")
-                description = None
-
                 if description_cell:
-                    description = description_cell.get_text(strip=True)
+                    return description_cell.get_text(strip=True)
 
-                for game in game_names:
-                    if game in debut_games:
-                        descriptions[game] = description
-                    
-    return descriptions
+    return None
 
 
 def get_height_weight(soup, field):
