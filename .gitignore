@@ -23,6 +23,12 @@ __pycache__/
 *.pyc
 .venv/
 
+# IDE
+.vscode/
+
+# Debug HTML files
+*.html
+
 # Claude Code
 CLAUDE.md
 
