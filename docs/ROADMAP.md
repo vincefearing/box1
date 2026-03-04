@@ -11,9 +11,11 @@ Set up the ETL pipeline, database, and app structure.
   - Tables: `pokemon`, `types`, `pokemon_types`, `sprites`, `games`, `locations`, `regional_dex_numbers`
   - Migrations managed via Supabase CLI
   - RLS enabled with public read policies
-- [ ] Load script to insert scraped data into Supabase
-- [ ] Run full scrape of all 1025 Pokemon and load into database
-- [ ] `fetch_cries.py` — pull cries from PokeAPI, upload to Supabase Storage
+- [x] Load script to insert scraped data into Supabase
+- [x] Run full scrape of all 1025 Pokemon and load into database
+- [x] Backfill 31 missing descriptions from PokeAPI
+- [x] Backfill 5,682 missing locations from Bulbapedia
+- [x] `fetch_cries.py` — pull cries from PokeAPI, upload to Supabase Storage
 - [ ] Define Swift data models
   - `Pokemon` — struct decoded from Supabase
   - `UserPokemon` — SwiftData model for collection tracking
