@@ -49,7 +49,7 @@ def parse_pokemon_data(html, name):
         "pokemon_sprites": pokemon_sprites,
         "generation": generation,
         "location_data": location_data,
-        "descriptions": description,
+        "description": description,
         "height": height,
         "weight": weight,
         "regional_dex_numbers": regional_dex_numbers,
@@ -187,12 +187,7 @@ def get_location_info(soup):
                 elif "Breed" in cell_text:
                     location_info = cell_text
                 elif location_links:
-                    location_urls = []
-                    for link in location_links:
-                        url = link["href"]
-                        location_urls.append(url)
-
-                    location_info = location_urls
+                    location_info = cell_text
                 else:
                     location_text = location_cell.get_text(strip=True)
                     if location_text == "Trade/migrate from another game":
@@ -378,28 +373,20 @@ def main():
     print("Starting the scraper...")
 
     base_url = "https://pokemondb.net"
+    master_list = get_master_pokemon_list()
 
-    url = f"{base_url}/pokedex/charizard"
-    html = fetch_html(url)
-    pokemon_data = parse_pokemon_data(html, "Charizard")
-    print(pokemon_data)
+    for pokemon in master_list:
+        logger.info(f"Attempting to catch: {pokemon['name']}...")
 
-    # if pokemon_data:
-    #     print(json.dumps(pokemon_data, indent = 4))
-    # master_list = get_master_pokemon_list()
+        full_url = f"{base_url}{pokemon['url']}"
+        html = fetch_html(full_url)
 
-    # for pokemon in master_list:
-    #     logger.info(f"Attempting to catch: {pokemon['name']}...")
+        pokemon_data = parse_pokemon_data(html, pokemon["name"])
 
-    #     full_url = f"{base_url}{pokemon['url']}"
-    #     html = fetch_html(full_url)
+        if pokemon_data:
+            save_pokemon_data(pokemon_data)
 
-    #     pokemon_data = parse_pokemon_data(html, pokemon["name"])
-
-    #     if pokemon_data:
-    #         save_pokemon_data(pokemon_data)
-
-    #     time.sleep(1)
+        time.sleep(1)
 
 
 if __name__ == "__main__":
