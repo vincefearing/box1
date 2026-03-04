@@ -1,0 +1,1 @@
+ALTER TABLE pokemon ALTER COLUMN description DROP NOT NULL;

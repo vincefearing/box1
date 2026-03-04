@@ -1,0 +1,1 @@
+ALTER TABLE regional_dex_numbers ADD CONSTRAINT regional_dex_dex_game_unique UNIQUE (dex_number, game_id);

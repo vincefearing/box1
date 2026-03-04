@@ -1,0 +1,1 @@
+ALTER TABLE locations ADD CONSTRAINT locations_dex_game_unique UNIQUE (dex_number, game_id);

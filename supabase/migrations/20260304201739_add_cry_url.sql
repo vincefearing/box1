@@ -1,0 +1,1 @@
+ALTER TABLE pokemon ADD COLUMN cry_url TEXT;

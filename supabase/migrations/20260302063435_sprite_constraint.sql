@@ -1,0 +1,1 @@
+ALTER TABLE sprites ADD CONSTRAINT sprites_dex_form_unique UNIQUE (dex_number, form_name)

@@ -1,0 +1,1 @@
+ALTER TABLE pokemon_types ADD CONSTRAINT pokemon_types_dex_types_unique UNIQUE (dex_number, type_id);
