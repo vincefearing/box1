@@ -10,6 +10,18 @@ GENERATION_BOUNDARIES = [
     (9, 1025),
 ]
 
+GENERATION_REGIONS = {
+    1: "Kanto",
+    2: "Johto",
+    3: "Hoenn",
+    4: "Sinnoh",
+    5: "Unova",
+    6: "Kalos",
+    7: "Alola",
+    8: "Galar",
+    9: "Paldea",
+}
+
 GENERATION_DEBUT_GAMES = {
     1: ["Red", "Blue"],
     2: ["Gold", "Silver"],

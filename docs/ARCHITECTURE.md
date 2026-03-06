@@ -2,43 +2,60 @@
 
 ## Data Layer
 
-### Bundled Pokemon Data
+### Supabase Backend
 
-All Pokemon data is shipped with the app as a single `pokemon.json` file in the app bundle.
+All Pokemon reference data lives in Supabase (PostgreSQL + auto-generated REST API). The iOS app fetches once and caches locally via SwiftData. Delta sync for new Pokemon only.
 
-**Source:** PokeAPI (https://pokeapi.co/)
-**Generation:** Python script (`scripts/fetch_pokemon_data.py`) pulls all data once and outputs structured JSON.
-**Update strategy:** On app launch, check PokeAPI for total Pokemon count. If count > local count, fetch only new entries and persist via SwiftData.
+**Source pipeline:** Python ETL scripts scrape PokemonDB (primary), backfill from PokeAPI (descriptions, cries) and Bulbapedia (locations), then load into Supabase.
 
-**Schema per Pokemon:**
-```json
-{
-  "id": 25,
-  "name": "Pikachu",
-  "types": ["Electric"],
-  "stats": {
-    "hp": 35, "attack": 55, "defense": 40,
-    "sp_attack": 50, "sp_defense": 50, "speed": 90
-  },
-  "height": 4,
-  "weight": 60,
-  "abilities": ["Static", "Lightning Rod"],
-  "description": "When several of these Pokemon gather, their electricity can build and cause lightning storms.",
-  "sprite_url": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png",
-  "generation": 1,
-  "evolution_chain_id": 10,
-  "forms": ["default"],
-  "is_legendary": false,
-  "is_mythical": false
-}
+**Database tables:**
+
+| Table | Rows | Purpose |
+|---|---|---|
+| `pokemon` | 1,025 | Core data: name, dex number, height, weight, generation, description, evolution chain, cry URL |
+| `types` | 18 | Type name + color |
+| `pokemon_types` | 1,551 | Many-to-many join (pokemon ↔ types) |
+| `sprites` | 1,532 | Sprite URLs per form |
+| `games` | 38 | Game name, generation, region |
+| `locations` | 23,539 | Where to find each Pokemon per game |
+| `regional_dex_numbers` | 10,370 | Per-game Pokedex numbers |
+
+**Storage:** `pokemon-cries` bucket (public) with .ogg cry files for all 1,025 Pokemon.
+
+**Sync strategy:**
+```
+App Launch
+    │
+    ▼
+Query Supabase: count of pokemon table
+    │
+    ▼
+Compare vs local SwiftData count
+    │
+    ├─ [same] ──→ Done (use local cache)
+    │
+    └─ [new Pokemon exist]
+         │
+         ▼
+    Fetch only new entries
+         │
+         ▼
+    Persist to SwiftData
 ```
 
-### User Data (SwiftData)
+### Authentication (Supabase Auth)
 
-Stored on-device. Never leaves the phone.
+Every user creates an account via Supabase Auth. Required even for free tier — shareable profiles need a user identity.
 
-**UserPokemon model:**
-- `pokemonId: Int` — reference to bundled data
+**Methods:** Sign in with Apple (primary), Google/email (optional).
+
+### User Data — Three Layers
+
+**1. User Collection (SwiftData — on-device)**
+
+Local-first collection tracking. Works offline, no network dependency for day-to-day use.
+
+- `pokemonId: Int` — reference to cached Pokemon data
 - `status: CollectionStatus` — enum: `.unseen`, `.seen`, `.caught`, `.favorite`
 - `isVerified: Bool` — true if confirmed via Verified Collection feature
 - `isShiny: Bool`
@@ -46,6 +63,33 @@ Stored on-device. Never leaves the phone.
 - `gender: Gender?` — enum: `.male`, `.female`, `.unknown`
 - `verifiedDate: Date?`
 - `notes: String?`
+
+**2. User Profile (Supabase — `profiles` table)**
+
+Lightweight summary data powering shareable profiles. Available to all users (free and premium).
+
+- `user_id` — foreign key to Supabase Auth user
+- `username`
+- `nintendo_id`
+- `profile_picture_url`
+- `total_caught` — aggregate count, computed from local collection
+- `badges` — earned achievements
+- `created_at`
+
+**3. Full Collection Sync (Supabase — `user_collections` table) [Premium]**
+
+Mirrors the local SwiftData collection to Supabase for cross-device sync (iOS/web/Android). Table designed now, sync logic built when web version launches.
+
+- `user_id` — foreign key to Supabase Auth user
+- Same fields as local SwiftData model
+- Bi-directional sync with conflict resolution
+
+**Data flow by tier:**
+
+| Tier | Collection | Profile | Cross-device sync |
+|---|---|---|---|
+| Free | Local SwiftData only | Summary stats pushed to Supabase | No |
+| Premium | Local SwiftData + Supabase `user_collections` | Summary stats pushed to Supabase | Yes — full collection available on all devices |
 
 ## AI Strategy
 
@@ -138,40 +182,8 @@ Match to Local Pokemon DB
 Mark as Verified in SwiftData
 ```
 
-### Data Sync
-```
-App Launch
-    │
-    ▼
-Check PokeAPI: GET /api/v2/pokemon?limit=1
-    │
-    ▼
-Compare count vs local JSON count
-    │
-    ├─ [same] ──→ Done
-    │
-    └─ [new Pokemon exist]
-         │
-         ▼
-    Fetch only new entries
-         │
-         ▼
-    Persist to SwiftData
-```
-
-## Future: Supabase Backend
-
-When a web app version is built, Supabase will handle cloud sync across platforms.
-
-- **SwiftData stays** as the local cache on iOS (offline support)
-- **Supabase** becomes the source of truth for user collection data
-- Sync strategy: local-first, push changes to Supabase when online, pull on launch
-- Web app reads/writes directly to Supabase
-- Keep all data models serializable and clean to make migration straightforward
-
 ## Dependencies (Swift Packages)
 
-TBD — will be added as we build each phase. Likely candidates:
-- None for Phase 1-2 (all Apple frameworks)
-- Anthropic Swift SDK or raw URLSession for Claude API in Phase 3
-- supabase-swift for future backend integration
+- **supabase-swift** — Supabase client (REST API, Auth, Storage)
+- Phase 3+: Anthropic Swift SDK or raw URLSession for Claude API
+- All other features use Apple frameworks (SwiftData, AVFoundation, Vision, Core ML)
