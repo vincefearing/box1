@@ -5,121 +5,96 @@
 Set up the ETL pipeline, database, and app structure.
 
 - [x] Python scraper (`scripts/fetch_pokemon_data.py`) to pull all Pokemon from PokemonDB
-  - All 1025 Pokemon: name, types, descriptions, sprite URLs, evolution chains, height/weight, locations, regional dex numbers
-  - Use `uv` for dependency management
-- [x] Supabase database schema
-  - Tables: `pokemon`, `types`, `pokemon_types`, `sprites`, `games`, `locations`, `regional_dex_numbers`
-  - Migrations managed via Supabase CLI
-  - RLS enabled with public read policies
+- [x] Supabase database schema (pokemon, types, pokemon_types, sprites, games, locations, regional_dex_numbers)
 - [x] Load script to insert scraped data into Supabase
 - [x] Run full scrape of all 1025 Pokemon and load into database
 - [x] Backfill 31 missing descriptions from PokeAPI
 - [x] Backfill 5,682 missing locations from Bulbapedia
 - [x] `fetch_cries.py` — pull cries from PokeAPI, upload to Supabase Storage
-- [ ] Define Swift data models
-  - `Pokemon` — struct decoded from Supabase
-  - `UserPokemon` — SwiftData model for collection tracking
-  - `CollectionStatus` enum: `.unseen`, `.seen`, `.caught`, `.favorite`
-- [ ] Project folder structure: Models/, Views/, Services/
+- [x] Backfill `origin_region` column on pokemon table
+- [x] Define Swift data models
+  - `Pokemon` — Codable struct with nested types (types, sprites, locations, regional dex, evolution chain)
+  - `Game` — standalone Codable struct
+  - `UserPokemon` — SwiftData model (pokemonId, form, isCaught, isShinyCaught, isOriginCaught)
+  - `UserProfile` — Codable struct for Supabase profiles table
+- [x] Project folder structure: Models/, Views/, Services/
 - [ ] Supabase client integration in Swift
+  - Add supabase-swift package
+  - Configure client with project URL and publishable key
+  - Fetch Pokemon data and decode into models
 
 ## Phase 2 — Core Tracker
 
-The main app experience. Browse, search, and track Pokemon across games.
+The main app experience. Browse, search, and track Pokemon.
 
-- [ ] Pokedex list view (scrollable grid or list of all Pokemon)
-  - Sprite image, name, number, types
+- [ ] Pokedex list view (scrollable grid of cards)
+  - Sprite, name, dex number, type-colored cards
+  - Greyed out = uncaught, colored = caught
   - Search by name or number
-  - Filter by type, generation, caught status
-  - Filter by game/regional Pokedex
+  - Filter by type, generation, game, region, caught status
+  - Sort by dex number, name, type, generation
 - [ ] Pokemon detail view
   - Full sprite, name, number, types
-  - Height, weight
-  - Pokedex description
+  - Height, weight, description
   - Evolution chain
   - Location data per game
   - Cry playback
+  - Bulbapedia link
 - [ ] Collection tracking
-  - Mark Pokemon as seen, caught, or favorite
-  - Collection progress stats (e.g., "342 / 1025 caught")
-  - Filter Pokedex by collection status
-  - Track per-game completion
+  - Mark Pokemon as caught (single tap)
+  - Shiny/origin toggles (premium, hidden for free)
+  - Form cards visible when form toggle on (premium)
 - [ ] Tab-based navigation
   - Pokedex tab
-  - Collection tab (shows only caught/seen/favorites)
-  - Settings tab (future: preferences)
+  - Achievements tab (badges with progress bars)
+  - Profile tab
+- [ ] Supabase Auth integration
+  - Sign in with Apple
+  - User profile creation
+- [ ] Achievements screen
+  - Regional badges with progress bars
+  - Mastery tiers (tier 1 free, tiers 2-6 premium)
 
 ## Phase 3 — Ash Ketchum Mode (Live Vision)
 
 Point the camera at a Pokemon and the app speaks its Pokedex entry.
 
 - [ ] Source or train Core ML Pokemon classifier
-  - Search GitHub for existing .mlmodel covering Gen 1-9
-  - If none suitable: download Kaggle dataset, train via Apple Create ML
-  - Target: all 1025 Pokemon, >85% accuracy
 - [ ] Camera view using AVCaptureSession in SwiftUI
-  - Live camera preview
-  - Frame capture for ML inference
-- [ ] Core ML integration
-  - Run classifier on captured frames
-  - Confidence threshold: 85%
-  - Debounce: only trigger when prediction changes
-- [ ] Text-to-speech
-  - AVSpeechSynthesizer with premium voice
-  - Speak local Pokedex entry immediately on recognition
-- [ ] Claude API integration
-  - Send captured image + identified Pokemon name to Claude Haiku 4.5
-  - Prompt: "What is this [Pokemon] doing? Be brief."
-  - Append contextual response after local entry finishes speaking
-- [ ] Overlay UI
-  - Pokemon info card overlaid on camera feed
-  - Name, type, brief description
-  - Smooth entrance/exit animations
+- [ ] Core ML integration with confidence threshold
+- [ ] Text-to-speech (AVSpeechSynthesizer)
+- [ ] Claude API integration for contextual descriptions
+- [ ] Overlay UI on camera feed
 
 ## Phase 4 — Verified Collection (Screen Scanner)
 
 Scan Pokemon Home to verify your real collection.
 
-- [ ] Video import from Photo Library (PHPickerViewController)
+- [ ] Video import from Photo Library
 - [ ] Stable frame extraction
-  - Iterate through video frames via AVAssetImageGenerator
-  - Compare consecutive frames via pixel difference
-  - Capture frame when difference < 5%
 - [ ] OCR processing via Vision framework
-  - VNRecognizeTextRequest on each stable frame
-  - Parse Pokemon name, form, gender, shiny status
-  - Map parsed data to local Pokemon database
 - [ ] pHash secondary confirmation (optional)
-  - Pre-compute hashes for all official Pokemon Home sprites
-  - Compare screen sprite hash to database via Hamming distance
-  - Match threshold: distance < 5
 - [ ] Verified badge system
-  - Mark matched Pokemon as `isVerified = true` in SwiftData
-  - Show verified badge on Pokedex list and detail views
-  - Track verification date
-- [ ] Processing UI
-  - Progress indicator during video scan
-  - Results summary: "Found 47 Pokemon. 3 new verifications."
-  - Review screen before committing results
+- [ ] Processing UI with results review
 
 ## Phase 5 — Polish
 
-Production quality. This is a real app, not a demo.
+Production quality.
 
 - [ ] Pokedex-themed UI design
-  - Color scheme, typography, visual identity
-  - Type-colored badges and accents
 - [ ] Animations and transitions
 - [ ] Sounds and haptics
 - [ ] App icon and launch screen
-- [ ] Error handling (network failures, permissions, invalid input)
+- [ ] Error handling
 - [ ] Accessibility (VoiceOver, Dynamic Type)
-- [ ] Performance (lazy loading, image caching, background processing)
+- [ ] Performance (lazy loading, image caching)
 
-## Phase 6 — Multi-Platform
+## Phase 6 — Multi-Platform & Premium
 
 Expand beyond iOS.
 
+- [ ] Premium subscription (StoreKit)
+- [ ] Cross-device sync (Supabase user_collections table)
 - [ ] Web app (consuming same Supabase backend)
 - [ ] Android app
-- [ ] Cloud sync for user data across platforms
+- [ ] Custom sort ordering (premium)

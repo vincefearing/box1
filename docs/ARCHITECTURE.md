@@ -12,10 +12,10 @@ All Pokemon reference data lives in Supabase (PostgreSQL + auto-generated REST A
 
 | Table | Rows | Purpose |
 |---|---|---|
-| `pokemon` | 1,025 | Core data: name, dex number, height, weight, generation, description, evolution chain, cry URL |
+| `pokemon` | 1,025 | Core data: name, dex number, height, weight, generation, origin region, description, evolution chain, cry URL |
 | `types` | 18 | Type name + color |
 | `pokemon_types` | 1,551 | Many-to-many join (pokemon ↔ types) |
-| `sprites` | 1,532 | Sprite URLs per form |
+| `sprites` | 1,532 | Sprite URLs per form (source of truth for what cards exist) |
 | `games` | 38 | Game name, generation, region |
 | `locations` | 23,539 | Where to find each Pokemon per game |
 | `regional_dex_numbers` | 10,370 | Per-game Pokedex numbers |
@@ -49,138 +49,62 @@ Every user creates an account via Supabase Auth. Required even for free tier —
 
 **Methods:** Sign in with Apple (primary), Google/email (optional).
 
-### User Data — Three Layers
+### User Data
 
-**1. User Collection (SwiftData — on-device)**
+**User Collection (SwiftData — on-device)**
 
-Local-first collection tracking. Works offline, no network dependency for day-to-day use.
+Local-first collection tracking. Works offline. One row per card (form).
 
-- `pokemonId: Int` — reference to cached Pokemon data
-- `status: CollectionStatus` — enum: `.unseen`, `.seen`, `.caught`, `.favorite`
-- `isVerified: Bool` — true if confirmed via Verified Collection feature
-- `isShiny: Bool`
-- `form: String?` — e.g., "Alolan", "Galarian"
-- `gender: Gender?` — enum: `.male`, `.female`, `.unknown`
-- `verifiedDate: Date?`
-- `notes: String?`
+- `pokemonId: Int`
+- `form: String`
+- `isCaught: Bool`
+- `isShinyCaught: Bool`
+- `isOriginCaught: Bool`
 
-**2. User Profile (Supabase — `profiles` table)**
+**User Profile (Supabase — `profiles` table)**
 
-Lightweight summary data powering shareable profiles. Available to all users (free and premium).
+Lightweight data powering shareable profiles. Available to all users.
 
-- `user_id` — foreign key to Supabase Auth user
-- `username`
-- `nintendo_id`
-- `profile_picture_url`
-- `total_caught` — aggregate count, computed from local collection
-- `badges` — earned achievements
+- `user_id`, `display_name`, `user_tag` (unique), `nintendo_id`, `profile_picture_url`
+- `total_caught`, `badges`, `team` (favorite 6 Pokemon)
 - `created_at`
 
-**3. Full Collection Sync (Supabase — `user_collections` table) [Premium]**
+**Full Collection Sync (Supabase — `user_collections` table) [Premium, Future]**
 
-Mirrors the local SwiftData collection to Supabase for cross-device sync (iOS/web/Android). Table designed now, sync logic built when web version launches.
-
-- `user_id` — foreign key to Supabase Auth user
-- Same fields as local SwiftData model
-- Bi-directional sync with conflict resolution
+Mirrors local collection to Supabase for cross-device sync. Table designed when web version launches.
 
 **Data flow by tier:**
 
 | Tier | Collection | Profile | Cross-device sync |
 |---|---|---|---|
 | Free | Local SwiftData only | Summary stats pushed to Supabase | No |
-| Premium | Local SwiftData + Supabase `user_collections` | Summary stats pushed to Supabase | Yes — full collection available on all devices |
+| Premium | Local SwiftData + Supabase `user_collections` | Summary stats pushed to Supabase | Yes |
 
-## AI Strategy
+## iOS Data Models
+
+**Reference data (Codable structs, read-only):**
+- `Pokemon` — flattened model with nested arrays for types, sprites, locations, regional dex numbers, evolution chain
+- `Game` — standalone for filtering and region lookups
+
+**User data:**
+- `UserPokemon` — SwiftData @Model class, local collection tracking
+- `UserProfile` — Codable struct for Supabase profiles table
+
+See [SPEC.md](SPEC.md) for full field definitions.
+
+## AI Strategy (Future — Phase 3+)
 
 ### On-Device: Core ML
-
-**Purpose:** Instant Pokemon recognition from live camera feed.
-**Model type:** Image classifier (MobileNet or ResNet architecture).
-**Source:** Train via Apple Create ML with Kaggle Pokemon dataset, or source open-source .mlmodel from GitHub.
-**Performance target:** <50ms inference, >85% confidence threshold.
-**Scope:** Classification only — outputs a Pokemon name, not descriptions.
+Instant Pokemon recognition from live camera feed. Image classifier, <50ms inference, >85% confidence.
 
 ### Cloud: Claude API (Haiku 4.5)
-
-**Purpose:** Contextual, intelligent descriptions that go beyond static Pokedex entries.
-**Use cases:**
-1. Ash Ketchum Mode — describe what a Pokemon is doing in context ("This Charizard appears to be a holographic trading card from the Base Set")
-2. Future: any feature needing natural language understanding of Pokemon imagery
-
-**Cost:** ~$0.002 per request. Negligible for personal use.
-
-**API key management:**
-- Store API key in iOS Keychain (not in source code, not in UserDefaults)
-- User enters their own API key in app settings
-- Key is never transmitted anywhere except Anthropic's API endpoint
+Contextual descriptions in Ash Ketchum Mode. ~$0.002 per request. API key stored in iOS Keychain.
 
 ### On-Device: Vision Framework (OCR)
-
-**Purpose:** Read text from Pokemon Home detail screens for Verified Collection.
-**Use cases:**
-1. Extract Pokemon name from screen
-2. Read form labels (Alolan, Galarian, Hisuian, etc.)
-3. Detect shiny indicator
-4. Read gender symbol
-
-**Why OCR over image matching:** Pokemon Home's detail screen displays all metadata as text. Reading it is near-100% accurate and handles every edge case (forms, variants, shinies, gender) without training data.
+Read text from Pokemon Home detail screens for Verified Collection.
 
 ### On-Device: Perceptual Hashing (pHash)
-
-**Purpose:** Secondary visual confirmation for Verified Collection.
-**How it works:**
-1. Pre-compute hash of every official Pokemon sprite, store in local DB
-2. At runtime, hash the sprite visible on the captured screen
-3. Compare via Hamming distance — match if distance < 5
-**Role:** Backup confirmation, not primary identification. OCR is primary.
-
-## Data Flow Diagrams
-
-### Ash Ketchum Mode
-```
-Camera Frame (60fps)
-    │
-    ▼
-Core ML Classifier ──→ Pokemon ID + Confidence
-    │                        │
-    │                   [confidence > 85%]
-    │                   [!= lastSpoken]
-    │                        │
-    │                        ▼
-    │                  Speak Local Dex Entry
-    │                  (AVSpeechSynthesizer)
-    │
-    ▼ (simultaneously)
-Claude API (Haiku)
-    │
-    ▼
-Append Contextual Description
-    │
-    ▼
-Speak Smart Description
-```
-
-### Verified Collection
-```
-User Video (Pokemon Home detail screens)
-    │
-    ▼
-Stable Frame Extraction
-(pixel-diff < 5% between frames)
-    │
-    ▼
-Vision OCR ──→ Name, Form, Gender, Shiny
-    │
-    ▼
-Match to Local Pokemon DB
-    │
-    ▼
-(Optional) pHash confirmation
-    │
-    ▼
-Mark as Verified in SwiftData
-```
+Secondary visual confirmation for Verified Collection.
 
 ## Dependencies (Swift Packages)
 
