@@ -11,14 +11,13 @@ class CachedPokemon {
     var weight: Double
     var pokemonDescription: String?
     var cryUrl: String
-    var typesData: Data
-    var spritesData: Data
-    var locationsData: Data
-    var regionalDexNumbersData: Data
+    var types: [Pokemon.PokemonType]
+    var sprites: [Pokemon.PokemonSprite]
+    var locations: [Pokemon.PokemonLocation]
+    var regionalDexNumbers: [Pokemon.RegionalDexEntry]
     var evolutionChainData: Data
-    
-    @MainActor init(from pokemon: Pokemon) throws {
-        let encoder = JSONEncoder()
+
+    init(from pokemon: Pokemon) throws {
         self.dexNumber = pokemon.dexNumber
         self.name = pokemon.name
         self.generation = pokemon.generation
@@ -27,10 +26,14 @@ class CachedPokemon {
         self.weight = pokemon.weight
         self.pokemonDescription = pokemon.description
         self.cryUrl = pokemon.cryUrl
-        self.typesData = try encoder.encode(pokemon.types)
-        self.spritesData = try encoder.encode(pokemon.sprites)
-        self.locationsData = try encoder.encode(pokemon.locations)
-        self.regionalDexNumbersData = try encoder.encode(pokemon.regionalDexNumbers)
-        self.evolutionChainData = try encoder.encode(pokemon.evolutionChain)
+        self.types = pokemon.types
+        self.sprites = pokemon.sprites
+        self.locations = pokemon.locations
+        self.regionalDexNumbers = pokemon.regionalDexNumbers
+        self.evolutionChainData = try JSONEncoder().encode(pokemon.evolutionChain)
+    }
+
+    var evolutionChain: Pokemon.EvolutionNode? {
+        try? JSONDecoder().decode(Pokemon.EvolutionNode.self, from: evolutionChainData)
     }
 }
