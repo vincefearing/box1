@@ -26,7 +26,7 @@ struct Pokemon: Codable {
         case types
         case sprites
         case locations
-        case regionalDexNumbers
+        case regionalDexNumbers = "regional_dex_numbers"
     }
 
     struct PokemonType: Codable {

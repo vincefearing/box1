@@ -1,21 +1,24 @@
-//
-//  ContentView.swift
-//  box1
-//
-//  Created by Vincent Fearing on 2/10/26.
-//
-
 import SwiftUI
 
 struct ContentView: View {
+    @State private var pokemon: [Pokemon] = []
     var body: some View {
         VStack {
             Image(systemName: "globe")
                 .imageScale(.large)
                 .foregroundStyle(.tint)
-            Text("Hello, world!")
+            Text("\(pokemon.count) Pokemon loaded")
         }
         .padding()
+        .task {
+            do {
+                let service = PokemonService()
+                pokemon = try await service.fetchAllPokemon()
+                print("Fetched \(pokemon.count) Pokemon")
+            } catch {
+                print("Error: \(error)")
+            }
+        }
     }
 }
 

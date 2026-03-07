@@ -10,7 +10,7 @@ Set up the ETL pipeline, database, and app structure.
 - [x] Run full scrape of all 1025 Pokemon and load into database
 - [x] Backfill 31 missing descriptions from PokeAPI
 - [x] Backfill 5,682 missing locations from Bulbapedia
-- [x] `fetch_cries.py` — pull cries from PokeAPI, upload to Supabase Storage
+- [x] `fetch_cries.py` — pull cries from PokeAPI, uplo≤ad to Supabase Storage
 - [x] Backfill `origin_region` column on pokemon table
 - [x] Define Swift data models
   - `Pokemon` — Codable struct with nested types (types, sprites, locations, regional dex, evolution chain)
@@ -26,7 +26,6 @@ Set up the ETL pipeline, database, and app structure.
 ## Phase 2 — Core Tracker
 
 The main app experience. Browse, search, and track Pokemon.
-
 - [ ] Pokedex list view (scrollable grid of cards)
   - Sprite, name, dex number, type-colored cards
   - Greyed out = uncaught, colored = caught
