@@ -1,11 +1,5 @@
-//
-//  box1App.swift
-//  box1
-//
-//  Created by Vincent Fearing on 2/10/26.
-//
-
 import SwiftUI
+import SwiftData
 
 @main
 struct box1App: App {
@@ -13,5 +7,6 @@ struct box1App: App {
         WindowGroup {
             ContentView()
         }
+        .modelContainer(for: [CachedPokemon.self, UserPokemon.self])
     }
 }

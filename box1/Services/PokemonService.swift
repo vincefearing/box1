@@ -1,5 +1,6 @@
 import Foundation
 import Supabase
+import SwiftData
 
 class PokemonService {
     func fetchAllPokemon() async throws -> [Pokemon] {
@@ -38,5 +39,13 @@ class PokemonService {
             .value
     
         return response
+    }
+    
+    func saveAllPokemon(_ pokemonList: [Pokemon], context: ModelContext) throws {
+        for pokemon in pokemonList {
+            let cached = try CachedPokemon(from: pokemon)
+            context.insert(cached)
+        }
+        try context.save()
     }
 }

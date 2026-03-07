@@ -1,4 +1,4 @@
-struct Pokemon: Codable {
+struct Pokemon: Codable, Sendable {
     let dexNumber: Int
     let name: String
     let generation: Int
@@ -29,12 +29,12 @@ struct Pokemon: Codable {
         case regionalDexNumbers = "regional_dex_numbers"
     }
 
-    struct PokemonType: Codable {
+    struct PokemonType: Codable, Sendable{
         let name: String
         let color: String
     }
 
-    struct PokemonSprite: Codable {
+    struct PokemonSprite: Codable, Sendable{
         let form: String
         let normalUrl: String
         let shinyUrl: String?
@@ -46,8 +46,8 @@ struct Pokemon: Codable {
         }
     }
 
-    struct PokemonLocation: Codable {
-        let gameId: Int 
+    struct PokemonLocation: Codable, Sendable {
+        let gameId: Int
         let locationInfo: String
 
         enum CodingKeys: String, CodingKey {
@@ -56,7 +56,7 @@ struct Pokemon: Codable {
         }
     }
 
-    struct RegionalDexEntry: Codable {
+    struct RegionalDexEntry: Codable, Sendable {
         let gameId: Int
         let regionalNumber: Int
 
@@ -66,7 +66,7 @@ struct Pokemon: Codable {
         }
     }
 
-    struct EvolutionNode: Codable {
+    struct EvolutionNode: Codable, Sendable {
         let name: String
         let evolvesTo: [EvolutionNode]
 

@@ -1,20 +1,26 @@
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
-    @State private var pokemon: [Pokemon] = []
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \CachedPokemon.dexNumber) private var cachedPokemon: [CachedPokemon]
+    
     var body: some View {
         VStack {
             Image(systemName: "globe")
                 .imageScale(.large)
                 .foregroundStyle(.tint)
-            Text("\(pokemon.count) Pokemon loaded")
+            Text("\(cachedPokemon.count) Pokemon loaded")
         }
         .padding()
         .task {
+            guard cachedPokemon.isEmpty else { return }
             do {
                 let service = PokemonService()
-                pokemon = try await service.fetchAllPokemon()
+                let pokemon = try await service.fetchAllPokemon()
+                try service.saveAllPokemon(pokemon, context: modelContext)
                 print("Fetched \(pokemon.count) Pokemon")
+                print("Saved \(pokemon.count) Pokemon to local storage")
             } catch {
                 print("Error: \(error)")
             }
