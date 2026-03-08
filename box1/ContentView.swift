@@ -6,13 +6,7 @@ struct ContentView: View {
     @Query(sort: \CachedPokemon.dexNumber) private var cachedPokemon: [CachedPokemon]
     
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("\(cachedPokemon.count) Pokemon loaded")
-        }
-        .padding()
+        PokemonGridView()
         .task {
             guard cachedPokemon.isEmpty else { return }
             do {
