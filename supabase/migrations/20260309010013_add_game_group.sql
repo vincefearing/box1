@@ -1,0 +1,1 @@
+ALTER TABLE games ADD COLUMN game_group TEXT NOT NULL DEFAULT '';

@@ -7,6 +7,6 @@ struct box1App: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(for: [CachedPokemon.self, UserPokemon.self])
+        .modelContainer(for: [CachedPokemon.self, CachedGame.self, UserPokemon.self])
     }
 }

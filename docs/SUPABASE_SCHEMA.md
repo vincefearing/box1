@@ -48,6 +48,7 @@
 | name | text |
 | generation | int |
 | region | text |
+| game_group | text |
 
 ## locations
 

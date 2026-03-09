@@ -41,6 +41,25 @@ class PokemonService {
         return response
     }
     
+    func fetchAllGames() async throws -> [Game] {
+        let response: [Game] = try await supabase
+            .from("games")
+            .select("id, name, generation, region, game_group")
+            .order("id")
+            .execute()
+            .value
+
+        return response
+    }
+
+    func saveAllGames(_ games: [Game], context: ModelContext) throws {
+        for game in games {
+            let cached = CachedGame(from: game)
+            context.insert(cached)
+        }
+        try context.save()
+    }
+
     func saveAllPokemon(_ pokemonList: [Pokemon], context: ModelContext) throws {
         for pokemon in pokemonList {
             let cached = try CachedPokemon(from: pokemon)
