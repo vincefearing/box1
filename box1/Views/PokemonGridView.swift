@@ -1,6 +1,13 @@
 import SwiftUI
 import SwiftData
 
+enum SortOption: String, CaseIterable {
+    case numberAsc = "# Ascending"
+    case numberDesc = "# Descending"
+    case nameAsc = "Name A–Z"
+    case nameDesc = "Name Z–A"
+}
+
 struct PokemonGridView: View {
     init() {}
 
@@ -13,6 +20,11 @@ struct PokemonGridView: View {
     @State private var isSelectMode = false
     @State private var selectedDexNumbers = Set<Int>()
     @State private var showScrollToTop = false
+    @State private var selectedTypes = Set<String>()
+    @State private var selectedGeneration: Int?
+    @State private var showMissingOnly = false
+    @State private var showFilterSheet = false
+    @State private var sortOption: SortOption = .numberAsc
 
     private var caughtDexNumbers: Set<Int> {
          Set(userPokemon.filter(\.isCaught).map(\.pokemonId))
@@ -38,6 +50,10 @@ struct PokemonGridView: View {
         return dict
     }
 
+    private var hasActiveFilters: Bool {
+        !selectedTypes.isEmpty || selectedGeneration != nil || showMissingOnly
+    }
+
     private var filteredDexNumbers: Set<Int> {
         var result = pokemon
 
@@ -45,6 +61,20 @@ struct PokemonGridView: View {
             result = result.filter { mon in
                 mon.regionalDexNumbers.contains { gameIds.contains($0.gameId) }
             }
+        }
+
+        if !selectedTypes.isEmpty {
+            result = result.filter { mon in
+                mon.types.contains { selectedTypes.contains($0.name.capitalized) }
+            }
+        }
+
+        if let gen = selectedGeneration {
+            result = result.filter { $0.generation == gen }
+        }
+
+        if showMissingOnly {
+            result = result.filter { !caughtDexNumbers.contains($0.dexNumber) }
         }
 
         if !searchText.isEmpty {
@@ -76,6 +106,17 @@ struct PokemonGridView: View {
                 let bNum = b.regionalDexNumbers.first { gameIds.contains($0.gameId) }?.regionalNumber ?? Int.max
                 return aNum < bNum
             }
+        } else {
+            switch sortOption {
+            case .numberAsc:
+                break // already sorted by dex number asc from @Query
+            case .numberDesc:
+                result.reverse()
+            case .nameAsc:
+                result.sort { $0.name < $1.name }
+            case .nameDesc:
+                result.sort { $0.name > $1.name }
+            }
         }
         return result
     }
@@ -93,12 +134,10 @@ struct PokemonGridView: View {
         NavigationStack {
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(spacing: 16) {
-                        filterHeader
-                            .id("top")
-                        pokemonGrid
-                    }
-                    .padding(.horizontal)
+                    pokemonGrid
+                        .padding(.horizontal)
+                        .padding(.top, 12)
+                        .id("top")
                 }
                 .onScrollGeometryChange(for: Bool.self) { geo in
                     geo.contentOffset.y > 200
@@ -125,7 +164,12 @@ struct PokemonGridView: View {
                 }
                 .animation(.easeInOut(duration: 0.2), value: showScrollToTop)
             }
-            .searchable(text: $searchText, prompt: "Search Pokemon")
+            .safeAreaInset(edge: .top, spacing: 0) {
+                filterHeader
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .background(.ultraThinMaterial)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Text("Pokedex")
@@ -138,17 +182,20 @@ struct PokemonGridView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Section("Filter") {
-                            // TODO: type, generation, caught status filters
-                            Button("All Types") {}
-                            Button("All Generations") {}
-                            Button("All Pokemon") {}
-                        }
-                        Section {
-                            Button("Settings") {}
+                        Picker("Sort", selection: $sortOption) {
+                            ForEach(SortOption.allCases, id: \.self) { option in
+                                Text(option.rawValue).tag(option)
+                            }
                         }
                     } label: {
-                        Image(systemName: "line.3.horizontal.decrease")
+                        Image(systemName: "arrow.up.arrow.down")
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showFilterSheet = true
+                    } label: {
+                        Image(systemName: hasActiveFilters ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease")
                     }
                 }
                 ToolbarSpacer(.fixed, placement: .topBarTrailing)
@@ -213,6 +260,13 @@ struct PokemonGridView: View {
                 }
             }
             .animation(.easeInOut(duration: 0.2), value: isSelectMode)
+            .sheet(isPresented: $showFilterSheet) {
+                FilterSheetView(
+                    selectedTypes: $selectedTypes,
+                    selectedGeneration: $selectedGeneration,
+                    showMissingOnly: $showMissingOnly
+                )
+            }
         }
     }
 
@@ -259,12 +313,10 @@ struct PokemonGridView: View {
                 }
                 .frame(height: 8)
             }
+
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemGray6))
-        )
+        .padding(.horizontal)
+        .padding(.vertical, 10)
     }
 
     private var pokemonGrid: some View {

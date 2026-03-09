@@ -5,9 +5,21 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \CachedPokemon.dexNumber) private var cachedPokemon: [CachedPokemon]
     @Query private var cachedGames: [CachedGame]
-
     var body: some View {
-        PokemonGridView()
+        TabView {
+            Tab("Pokedex", systemImage: "square.grid.2x2") {
+                PokemonGridView()
+            }
+            Tab("Settings", systemImage: "gearshape") {
+                NavigationStack {
+                    ProfileView()
+                }
+            }
+            Tab(role: .search) {
+                PokemonGridView()
+            }
+        }
+        .tabBarMinimizeBehavior(.onScrollDown)
         .task {
             guard cachedPokemon.isEmpty else {
                 // Data exists, but check if sprites need downloading
