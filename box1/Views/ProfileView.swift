@@ -12,10 +12,10 @@ struct ProfileView: View {
         NavigationStack {
             List {
                 Section("Pokedex") {
-                    Toggle("Mega Evolutions", isOn: $showMegas)
+                    Toggle("Forms", isOn: $showOtherForms)
                     Toggle("Female Variants", isOn: $showFemales)
+                    Toggle("Mega Evolutions", isOn: $showMegas)
                     Toggle("Gigantamax", isOn: $showGigantamax)
-                    Toggle("Other Forms", isOn: $showOtherForms)
                 }
 
                 Section("Tracking") {
