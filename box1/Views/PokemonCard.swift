@@ -2,13 +2,16 @@ import SwiftUI
 
 struct PokemonCard: View {
     let pokemon: CachedPokemon
+    var isCaught: Bool = false
 
     var body: some View {
         VStack(spacing: 4) {
-            AsyncImage(url: URL(string: pokemon.sprites.first?.normalUrl ?? "")) { image in
+            AsyncImage(url: URL(string: pokemon.sprites.first(where: { $0.form == "default" })?.normalUrl ?? "")) { image in
                 image
                     .resizable()
                     .scaledToFit()
+                    .saturation(isCaught ? 1 : 0)
+                    .opacity(isCaught ? 1 : 0.5)
             } placeholder: {
                 ProgressView()
             }
@@ -16,7 +19,7 @@ struct PokemonCard: View {
             .frame(maxWidth: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(typeColor.opacity(0.2))
+                    .fill(isCaught ? typeColor.opacity(0.2) : Color.gray.opacity(0.1))
             )
 
             Text(String(format: "#%03d", pokemon.dexNumber))
