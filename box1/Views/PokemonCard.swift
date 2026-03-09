@@ -8,29 +8,19 @@ struct PokemonCard: View {
     var displayDexNumber: Int?
     var form: String = "default"
 
+    private var spriteUrl: String? {
+        let sprite = pokemon.sprites.first { $0.form == form }
+        if isShiny { return sprite?.shinyUrl ?? sprite?.normalUrl }
+        return sprite?.normalUrl
+    }
+
     var body: some View {
         VStack(spacing: 8) {
-            Group {
-                let localPath = SpriteService.localPath(dexNumber: pokemon.dexNumber, form: form, shiny: isShiny)
-                let fallbackPath = SpriteService.localPath(dexNumber: pokemon.dexNumber, form: form)
-                if isShiny, let uiImage = UIImage(contentsOfFile: localPath.path) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFit()
-                        .saturation(isCaught ? 1 : 0)
-                        .opacity(isCaught ? 1 : 0.5)
-                } else if let uiImage = UIImage(contentsOfFile: fallbackPath.path) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFit()
-                        .saturation(isCaught ? 1 : 0)
-                        .opacity(isCaught ? 1 : 0.5)
-                } else {
-                    ProgressView()
-                }
-            }
-            .frame(height: 80)
-            .frame(maxWidth: .infinity)
+            SpriteImage(dexNumber: pokemon.dexNumber, form: form, shiny: isShiny, remoteUrl: spriteUrl)
+                .saturation(isCaught ? 1 : 0)
+                .opacity(isCaught ? 1 : 0.5)
+                .frame(height: 80)
+                .frame(maxWidth: .infinity)
             .overlay(alignment: .topTrailing) {
                 if isShiny {
                     Image(systemName: "sparkles")

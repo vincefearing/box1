@@ -21,15 +21,7 @@ struct ContentView: View {
         }
         .tabBarMinimizeBehavior(.onScrollDown)
         .task {
-            guard cachedPokemon.isEmpty else {
-                let spriteService = SpriteService()
-                if !SpriteService.spriteExists(dexNumber: 1, form: "default") {
-                    await spriteService.downloadAllSprites(from: cachedPokemon)
-                }
-                await spriteService.downloadFormSprites(from: cachedPokemon)
-                await spriteService.downloadShinySprites(from: cachedPokemon)
-                return
-            }
+            guard cachedPokemon.isEmpty else { return }
             do {
                 let service = PokemonService()
                 let pokemon = try await service.fetchAllPokemon()
@@ -39,11 +31,6 @@ struct ContentView: View {
                 let games = try await service.fetchAllGames()
                 try service.saveAllGames(games, context: modelContext)
                 print("Saved \(games.count) games to local storage")
-
-                let spriteService = SpriteService()
-                await spriteService.downloadAllSprites(from: cachedPokemon)
-                await spriteService.downloadFormSprites(from: cachedPokemon)
-                await spriteService.downloadShinySprites(from: cachedPokemon)
             } catch {
                 print("Error: \(error)")
             }

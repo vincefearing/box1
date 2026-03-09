@@ -19,6 +19,149 @@ enum FormCategory {
         if lower == "female" { return .female }
         return .other
     }
+
+    private static let megaGameGroups: Set<String> = [
+        "X & Y", "Omega Ruby & Alpha Sapphire",
+        "Sun & Moon", "Ultra Sun & Ultra Moon",
+        "Let's Go Pikachu & Eevee", "Legends: Z-A"
+    ]
+
+    private static let gmaxGameGroups: Set<String> = [
+        "Sword & Shield"
+    ]
+
+    private static let preGenderDiffGroups: Set<String> = [
+        "Red & Blue", "Yellow",
+        "Gold & Silver", "Crystal",
+        "Ruby & Sapphire", "Emerald", "FireRed & LeafGreen"
+    ]
+
+    private static let alolanGameGroups: Set<String> = [
+        "Sun & Moon", "Ultra Sun & Ultra Moon",
+        "Let's Go Pikachu & Eevee",
+        "Sword & Shield",
+        "Brilliant Diamond & Shining Pearl",
+        "Scarlet & Violet", "Legends: Z-A"
+    ]
+
+    private static let galarianGameGroups: Set<String> = [
+        "Sword & Shield"
+    ]
+
+    private static let hisuianGameGroups: Set<String> = [
+        "Legends: Arceus", "Scarlet & Violet", "Legends: Z-A"
+    ]
+
+    private static let paldeanGameGroups: Set<String> = [
+        "Scarlet & Violet", "Legends: Z-A"
+    ]
+
+    // Gen 7+ game groups (for Cap Pikachu, Ash Greninja, etc.)
+    private static let gen7PlusGameGroups: Set<String> = [
+        "Sun & Moon", "Ultra Sun & Ultra Moon",
+        "Let's Go Pikachu & Eevee",
+        "Sword & Shield",
+        "Brilliant Diamond & Shining Pearl",
+        "Legends: Arceus",
+        "Scarlet & Violet", "Legends: Z-A"
+    ]
+
+    // Gen 4+ game groups (for Rotom forms, Origin Giratina, etc.)
+    private static let gen4PlusGameGroups: Set<String> = [
+        "Diamond & Pearl", "Platinum",
+        "HeartGold & SoulSilver",
+        "Black & White", "Black 2 & White 2",
+        "X & Y", "Omega Ruby & Alpha Sapphire",
+        "Sun & Moon", "Ultra Sun & Ultra Moon",
+        "Let's Go Pikachu & Eevee",
+        "Sword & Shield",
+        "Brilliant Diamond & Shining Pearl",
+        "Legends: Arceus",
+        "Scarlet & Violet", "Legends: Z-A"
+    ]
+
+    // Gen 3+ game groups (for Deoxys forms, Castform, etc.)
+    private static let gen3PlusGameGroups: Set<String> = [
+        "Ruby & Sapphire", "Emerald", "FireRed & LeafGreen",
+        "Diamond & Pearl", "Platinum",
+        "HeartGold & SoulSilver",
+        "Black & White", "Black 2 & White 2",
+        "X & Y", "Omega Ruby & Alpha Sapphire",
+        "Sun & Moon", "Ultra Sun & Ultra Moon",
+        "Let's Go Pikachu & Eevee",
+        "Sword & Shield",
+        "Brilliant Diamond & Shining Pearl",
+        "Legends: Arceus",
+        "Scarlet & Violet", "Legends: Z-A"
+    ]
+
+    // Gen 2+ game groups (for Unown forms)
+    private static let gen2PlusGameGroups: Set<String> = [
+        "Gold & Silver", "Crystal",
+        "Ruby & Sapphire", "Emerald", "FireRed & LeafGreen",
+        "Diamond & Pearl", "Platinum",
+        "HeartGold & SoulSilver",
+        "Black & White", "Black 2 & White 2",
+        "X & Y", "Omega Ruby & Alpha Sapphire",
+        "Sun & Moon", "Ultra Sun & Ultra Moon",
+        "Let's Go Pikachu & Eevee",
+        "Sword & Shield",
+        "Brilliant Diamond & Shining Pearl",
+        "Legends: Arceus",
+        "Scarlet & Violet", "Legends: Z-A"
+    ]
+
+    static func isFormAvailable(_ form: String, forGameGroup group: String) -> Bool {
+        if group.isEmpty { return true }
+
+        guard let category = categorize(form) else { return true }
+
+        switch category {
+        case .mega: return megaGameGroups.contains(group)
+        case .gigantamax: return gmaxGameGroups.contains(group)
+        case .female: return !preGenderDiffGroups.contains(group)
+        case .other:
+            let lower = form.lowercased()
+
+            // Regional variants
+            if lower.hasPrefix("alolan") || lower == "alola-cap" { return alolanGameGroups.contains(group) }
+            if lower.hasPrefix("galarian") { return galarianGameGroups.contains(group) }
+            if lower.hasPrefix("hisuian") { return hisuianGameGroups.contains(group) }
+            if lower.hasPrefix("paldean") { return paldeanGameGroups.contains(group) }
+
+            // Cap Pikachu, Ash Greninja, Bloodmoon Ursaluna, Gen 7+ forms
+            if lower.contains("-cap") || lower == "ash" || lower == "bloodmoon" { return gen7PlusGameGroups.contains(group) }
+
+            // Gen 8+ specific forms (Alcremie, Toxtricity, Morpeko, etc. are filtered by regional dex already)
+            // Calyrex riders, Urshifu, Zacian/Zamazenta crowned
+            if ["ice-rider", "shadow-rider", "single-strike", "rapid-strike",
+                "crowned", "noice", "hangry", "full-belly",
+                "gulping", "gorging"].contains(lower) {
+                return gen7PlusGameGroups.contains(group) // Gen 8 really, but these Pokemon aren't in earlier dexes
+            }
+
+            // Rotom forms, Origin Giratina/Dialga/Palkia, Shaymin Sky
+            if ["fan", "frost", "heat", "mow", "wash",
+                "origin", "altered", "sky", "land",
+                "incarnate", "therian"].contains(lower) {
+                return gen4PlusGameGroups.contains(group)
+            }
+
+            // Deoxys forms, Castform, Burmy/Wormadam
+            if ["attack", "defense", "speed",
+                "rainy", "snowy", "sunny",
+                "plant", "sandy", "trash"].contains(lower) {
+                return gen3PlusGameGroups.contains(group)
+            }
+
+            // Unown letter forms
+            if lower.count <= 2 { return gen2PlusGameGroups.contains(group) }
+
+            // Everything else: show for all games
+            // (most misc forms belong to Pokemon only in their own regional dex)
+            return true
+        }
+    }
 }
 
 struct PokemonGridItem: Identifiable {
@@ -42,7 +185,7 @@ struct PokemonGridView: View {
     @Query(sort: \CachedGame.id) private var games: [CachedGame]
     @Query private var userPokemon: [UserPokemon]
     @State private var searchText = ""
-    @State private var selectedGroup: String?
+    @AppStorage("selectedGameGroup") private var selectedGameGroup: String = ""
     @State private var isSelectMode = false
     @State private var selectedItems = Set<String>()
     @State private var showScrollToTop = false
@@ -97,7 +240,7 @@ struct PokemonGridView: View {
     private var filteredDexNumbers: Set<Int> {
         var result = pokemon
 
-        if let group = selectedGroup, let gameIds = gameIdsByGroup[group] {
+        if !selectedGameGroup.isEmpty, let gameIds = gameIdsByGroup[selectedGameGroup] {
             result = result.filter { mon in
                 mon.regionalDexNumbers.contains { gameIds.contains($0.gameId) }
             }
@@ -128,8 +271,8 @@ struct PokemonGridView: View {
     }
 
     private var selectedGameIds: Set<Int>? {
-        guard let group = selectedGroup else { return nil }
-        return gameIdsByGroup[group]
+        guard !selectedGameGroup.isEmpty else { return nil }
+        return gameIdsByGroup[selectedGameGroup]
     }
 
     private func regionalNumber(for mon: CachedPokemon) -> Int? {
@@ -165,7 +308,8 @@ struct PokemonGridView: View {
         filteredPokemon.flatMap { mon -> [PokemonGridItem] in
             var items = [PokemonGridItem(pokemon: mon, form: "default")]
             for sprite in mon.sprites where sprite.form != "default" {
-                guard let category = FormCategory.categorize(sprite.form) else { continue }
+                guard let category = FormCategory.categorize(sprite.form),
+                      FormCategory.isFormAvailable(sprite.form, forGameGroup: selectedGameGroup) else { continue }
                 switch category {
                 case .mega: if showMegas { items.append(PokemonGridItem(pokemon: mon, form: sprite.form)) }
                 case .gigantamax: if showGigantamax { items.append(PokemonGridItem(pokemon: mon, form: sprite.form)) }
@@ -333,13 +477,13 @@ struct PokemonGridView: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Menu {
-                    Button("National Pokedex") { selectedGroup = nil }
+                    Button("National Pokedex") { selectedGameGroup = "" }
                     ForEach(gameGroups, id: \.name) { group in
-                        Button(group.name) { selectedGroup = group.name }
+                        Button(group.name) { selectedGameGroup = group.name }
                     }
                 } label: {
                     HStack(spacing: 4) {
-                        Text(selectedGroup ?? "National Pokedex")
+                        Text(selectedGameGroup.isEmpty ? "National Pokedex" : selectedGameGroup)
                             .fontWeight(.medium)
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.caption2)
@@ -381,7 +525,7 @@ struct PokemonGridView: View {
                 cardView(for: item)
             }
         }
-        .id(selectedGroup)
+        .id(selectedGameGroup)
     }
 
     @ViewBuilder
@@ -407,8 +551,13 @@ struct PokemonGridView: View {
                     }
                 }
         } else {
-            PokemonCard(pokemon: item.pokemon, isCaught: caught, isShiny: shiny, isOrigin: origin, displayDexNumber: regNumber, form: item.form)
-                .contextMenu {
+            NavigationLink {
+                PokemonDetailView(pokemon: item.pokemon, form: item.form)
+            } label: {
+                PokemonCard(pokemon: item.pokemon, isCaught: caught, isShiny: shiny, isOrigin: origin, displayDexNumber: regNumber, form: item.form)
+            }
+            .buttonStyle(.plain)
+            .contextMenu {
                     Button {
                         toggleCaught(dexNumber: item.pokemon.dexNumber, form: item.form)
                     } label: {

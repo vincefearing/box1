@@ -7,6 +7,8 @@ class UserPokemon {
     var isCaught: Bool
     var isShinyCaught: Bool
     var isOriginCaught: Bool
+    var nickname: String = ""
+    var notes: String = ""
 
     init(pokemonId: Int, form: String, isCaught: Bool = false, isShinyCaught: Bool = false, isOriginCaught: Bool = false) {
         self.pokemonId = pokemonId
