@@ -12,7 +12,9 @@ struct PokemonDetailView: View {
     @AppStorage("trackShiny") private var trackShiny = false
     @AppStorage("trackOrigin") private var trackOrigin = false
     @AppStorage("selectedGameGroup") private var selectedGameGroup: String = ""
+    @AppStorage("dismissUncatchWarning") private var dismissUncatchWarning = false
     @State private var audioPlayer: AVPlayer?
+    @State private var showUncatchAlert = false
 
     private var entry: UserPokemon? {
         userPokemon.first { $0.pokemonId == pokemon.dexNumber && $0.form == form }
@@ -41,20 +43,32 @@ struct PokemonDetailView: View {
             VStack(spacing: 20) {
                 spriteSection
                 typeSection
-                nicknameSection
+                if isCaught { nicknameSection }
                 statsSection
                 if let description = pokemon.pokemonDescription, !description.isEmpty {
                     descriptionSection(description)
                 }
                 crySection
                 actionSection
-                notesSection
+                if isCaught { notesSection }
                 locationSection
             }
             .padding()
         }
         .navigationTitle(pokemon.name.capitalized)
         .navigationBarTitleDisplayMode(.inline)
+        .alert("Remove from Collection?", isPresented: $showUncatchAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Remove", role: .destructive) {
+                confirmUncatch()
+            }
+            Button("Remove & Don't Warn Again", role: .destructive) {
+                dismissUncatchWarning = true
+                confirmUncatch()
+            }
+        } message: {
+            Text("The nickname and notes for this Pokemon will be deleted.")
+        }
     }
 
     // MARK: - Sprite
@@ -103,13 +117,7 @@ struct PokemonDetailView: View {
         TextField("Add a nickname...", text: Binding(
             get: { entry?.nickname ?? "" },
             set: { newValue in
-                if let existing = entry {
-                    existing.nickname = newValue
-                } else {
-                    let newEntry = UserPokemon(pokemonId: pokemon.dexNumber, form: form)
-                    newEntry.nickname = newValue
-                    modelContext.insert(newEntry)
-                }
+                entry?.nickname = newValue
             }
         ))
         .font(.title3)
@@ -236,13 +244,7 @@ struct PokemonDetailView: View {
             TextField("Add notes...", text: Binding(
                 get: { entry?.notes ?? "" },
                 set: { newValue in
-                    if let existing = entry {
-                        existing.notes = newValue
-                    } else {
-                        let newEntry = UserPokemon(pokemonId: pokemon.dexNumber, form: form)
-                        newEntry.notes = newValue
-                        modelContext.insert(newEntry)
-                    }
+                    entry?.notes = newValue
                 }
             ), axis: .vertical)
             .lineLimit(3...6)
@@ -305,11 +307,26 @@ struct PokemonDetailView: View {
     }
 
     private func toggleCaught() {
-        if let existing = entry {
-            existing.isCaught.toggle()
+        if let existing = entry, existing.isCaught {
+            let hasData = !existing.nickname.isEmpty || !existing.notes.isEmpty
+            if hasData && !dismissUncatchWarning {
+                showUncatchAlert = true
+            } else {
+                confirmUncatch()
+            }
+        } else if let existing = entry {
+            existing.isCaught = true
         } else {
             let newEntry = UserPokemon(pokemonId: pokemon.dexNumber, form: form, isCaught: true)
             modelContext.insert(newEntry)
+        }
+    }
+
+    private func confirmUncatch() {
+        if let existing = entry {
+            existing.isCaught = false
+            existing.nickname = ""
+            existing.notes = ""
         }
     }
 

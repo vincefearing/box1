@@ -10,6 +10,9 @@ struct ContentView: View {
             Tab("Pokedex", systemImage: "square.grid.2x2") {
                 PokemonGridView()
             }
+            Tab("Stats", systemImage: "chart.bar.fill") {
+                StatsView()
+            }
             Tab("Settings", systemImage: "gearshape") {
                 NavigationStack {
                     ProfileView()

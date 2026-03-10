@@ -107,33 +107,44 @@ Three separate flags, not cumulative.
 
 ---
 
-## Feature 3: Badges
+## Feature 3: Badge System
 
 ### Concept
-Badges are achievements with progress bars, computed from UserPokemon data. Displayed on a dedicated achievements screen and on the user's shareable profile. Badges ARE the overall progress tracker — there is no Master Collection view.
+Six cumulative badges representing escalating collection milestones. Computed live from UserPokemon data. Displayed on the user's shareable profile as prestige bragging rights (like CoD prestige). No notifications or pop-ups — the Progress tab is a live dashboard you check when curious.
 
-### Badge Types
+### Badges
 
-**Regional badges:** earned by catching all Pokemon from a specific region (e.g., all 151 Kanto Pokemon → "Kanto Badge"). Each regional badge has mastery tiers.
+Cumulative — each badge requires the ones above it.
 
-**Global badges:** total collection milestones (e.g., "Catch 500 Pokemon", "Complete the National Dex").
+| Name | Color | Requirement | Requires | Visible When |
+|---|---|---|---|---|
+| Trainer | Bronze | One of each Pokemon caught (1,025) | — | Always |
+| Veteran | Silver | Every form caught | Trainer | Forms enabled |
+| Champion | Gold | Every Pokemon caught in home region | Veteran | Origin enabled |
+| Master | Platinum | Shiny of each Pokemon (1,025) | — | Shiny enabled |
+| Grandmaster | Diamond | Shiny of every form | Master | Shiny + Forms enabled |
+| Legend | Prismatic | Shiny + Origin + all forms | Grandmaster + Champion | Shiny + Forms + Origin enabled |
 
-### Mastery Tiers (Premium — tiers 2-6)
-Cumulative — each tier includes everything from the previous:
+### Badge Behavior
+- **Computed, not stored.** Progress derived from UserPokemon data on every catch/uncatch action.
+- **Reflects current state.** Uncatching a Pokemon recalculates all affected badges. No permanent trophies.
+- **No notifications.** No pop-ups, banners, or alerts. The Progress tab is a live dashboard.
+- **Visibility controlled by Settings toggles.** Only badges relevant to your enabled tracking appear.
 
-| Tier | Name | Requirement |
-|---|---|---|
-| 1 | Living Dex | One of each Pokemon (free) |
-| 2 | Form Dex | Tier 1 + all forms |
-| 3 | Origin Dex (Mastery) | Tier 2 + all caught in home region |
-| 4 | Shiny Living Dex | Shiny of each Pokemon |
-| 5 | Shiny Form Dex | Tier 4 + shiny of all forms |
-| 6 | Shiny Origin Dex (Shiny Mastery) | Tier 5 + all shiny caught in home region |
+### Progress Tab
+Top-level tab in the iOS tab bar (Pokedex | Progress | Settings | Search). Shows badge progress plus supporting stats:
 
-### Badge Display
-- Dedicated achievements screen with progress bars
-- Each badge shows: name, description (e.g., "Complete the Kanto Pokedex"), progress bar, current tier
-- Shareable profile shows earned badges
+- **Type completion** — progress per type (18 types)
+- **Challenge completion** — thematic groups (Regional Birds, Legendaries, Starters, Fossils, Eeveelutions, etc.)
+- **Form completion** — per-category (Megas, Gmax, regional variants) and per-Pokemon (Unown, Vivillon, Alcremie, etc.)
+- **Milestones** — threshold markers (1, 50, 151, 500 caught)
+
+Supporting stats are not profile badges — just detailed breakdowns on the Progress tab.
+
+### Profile Display
+Profile shows your highest earned badge with its color treatment. One badge, one flex.
+
+See [Badge Registry](../01.%20Quick%20Notes/box1%20Achievement%20Registry.md) for full definitions.
 
 ---
 
@@ -143,17 +154,25 @@ Cumulative — each tier includes everything from the previous:
 |---|---|---|
 | Full Pokedex browsing | yes | yes |
 | Collection tracking (caught) | yes | yes |
-| Shareable profile | yes | yes |
-| Filter by game/region/type/gen | yes | yes |
+| National Pokedex | yes | yes |
+| Latest gen games (Scarlet/Violet, Legends Z-A) | yes | yes |
+| Filter by type | yes | yes |
+| Show missing filter | yes | yes |
 | Standard sorting (dex #, name, type, gen) | yes | yes |
+| Stats: caught, forms, females progress | yes | yes |
+| Older game Pokedex filters | no | yes |
+| Generation filter | no | yes |
 | Shiny tracking toggle | no | yes |
 | Origin tracking toggle | no | yes |
+| Nickname field | no | yes |
+| Notes field | no | yes |
 | Form tracking toggle | no | yes |
+| Stats: shiny + origin progress | no | yes |
 | Advanced sorting (custom order, caught status) | no | yes |
-| Badge mastery tiers 2-6 | no | yes |
+| Veteran/Champion/Master/Grandmaster/Legend badges | no | yes |
 | Cross-device sync | no | yes |
 
-Free tier = solid living dex tracker with filtering. Premium = shiny/origin/form tracking, advanced sorting, full badge system, and cross-device sync.
+Free tier = solid living dex tracker with National + latest gen, type filtering, and basic stats. Premium = full game library, shiny/origin/form tracking, nickname/notes, advanced filters and sorting, full stats, and cross-device sync.
 
 ---
 

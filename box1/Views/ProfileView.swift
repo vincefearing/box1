@@ -7,6 +7,7 @@ struct ProfileView: View {
     @AppStorage("showOtherForms") private var showOtherForms = false
     @AppStorage("trackShiny") private var trackShiny = false
     @AppStorage("trackOrigin") private var trackOrigin = false
+    @AppStorage("dismissUncatchWarning") private var dismissUncatchWarning = false
 
     var body: some View {
         NavigationStack {
@@ -21,6 +22,10 @@ struct ProfileView: View {
                 Section("Tracking") {
                     Toggle("Shiny", isOn: $trackShiny)
                     Toggle("Origin Game", isOn: $trackOrigin)
+                }
+
+                Section("Warnings") {
+                    Toggle("Suppress Uncatch Warning", isOn: $dismissUncatchWarning)
                 }
             }
             .navigationTitle("Settings")
