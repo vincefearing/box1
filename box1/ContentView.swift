@@ -22,7 +22,7 @@ struct ContentView: View {
                 }
             }
             Tab(role: .search) {
-                PokemonGridView()
+                PokemonGridView(isSearchable: true)
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)

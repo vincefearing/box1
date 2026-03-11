@@ -1,6 +1,17 @@
 import SwiftUI
 import SwiftData
 
+private extension View {
+    @ViewBuilder
+    func applyIf<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
+        if condition {
+            transform(self)
+        } else {
+            self
+        }
+    }
+}
+
 enum SortOption: String, CaseIterable {
     case numberAsc = "# Ascending"
     case numberDesc = "# Descending"
@@ -20,7 +31,11 @@ struct PokemonGridItem: Identifiable {
 }
 
 struct PokemonGridView: View {
-    init() {}
+    private let isSearchable: Bool
+
+    init(isSearchable: Bool = false) {
+        self.isSearchable = isSearchable
+    }
 
     private static let freeGameGroups: Set<String> = ["Scarlet & Violet", "Legends: Z-A"]
 
@@ -269,7 +284,9 @@ struct PokemonGridView: View {
                 }
             }
             .animation(.easeInOut(duration: 0.2), value: isSelectMode)
-            .searchable(text: $searchText, prompt: "Search Pokemon")
+            .applyIf(isSearchable) { view in
+                view.searchable(text: $searchText, prompt: "Search Pokemon")
+            }
             .sheet(isPresented: $showFilterSheet) {
                 FilterSheetView(
                     selectedTypes: $selectedTypes,
