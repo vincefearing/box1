@@ -19,6 +19,7 @@ struct PokemonDetailView: View {
     @State private var showUncatchAlert = false
     @State private var pendingUncatchAction: (() -> Void)?
     @FocusState private var focusedField: Field?
+    @State private var catchFeedbackTrigger = false
 
     private enum Field { case nickname, notes }
 
@@ -52,7 +53,7 @@ struct PokemonDetailView: View {
                 spriteSection
                 Text(pokemon.displayName(form: form))
                     .font(.title2)
-                    .fontWeight(.bold)
+                    .bold()
                 typeSection
                 if isCaught {
                     nicknameSection
@@ -90,6 +91,7 @@ struct PokemonDetailView: View {
         } message: {
             Text("The nickname and notes for this Pokemon will be deleted.")
         }
+        .sensoryFeedback(.success, trigger: catchFeedbackTrigger)
     }
 
     // MARK: - Sprite
@@ -167,7 +169,7 @@ struct PokemonDetailView: View {
                 Text("Height")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(String(format: "%.1f m", pokemon.height))
+                Text("\(pokemon.height, format: .number.precision(.fractionLength(1))) m")
                     .font(.subheadline)
                     .fontWeight(.medium)
             }
@@ -175,7 +177,7 @@ struct PokemonDetailView: View {
                 Text("Weight")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(String(format: "%.1f kg", pokemon.weight))
+                Text("\(pokemon.weight, format: .number.precision(.fractionLength(1))) kg")
                     .font(.subheadline)
                     .fontWeight(.medium)
             }
@@ -204,9 +206,9 @@ struct PokemonDetailView: View {
     // MARK: - Description
 
     private func descriptionSection(_ text: String) -> some View {
-        Text(text.replacingOccurrences(of: "POKéMON", with: "Pokémon")
-                .replacingOccurrences(of: "POKEMON", with: "Pokémon")
-                .replacingOccurrences(of: "POKeMON", with: "Pokémon"))
+        Text(text.replacing("POKéMON", with: "Pokémon")
+                .replacing("POKEMON", with: "Pokémon")
+                .replacing("POKeMON", with: "Pokémon"))
             .font(.body)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -236,7 +238,7 @@ struct PokemonDetailView: View {
                     Image(systemName: isCaught ? "checkmark.circle.fill" : "checkmark.circle")
                         .font(.title2)
                     Text("Caught")
-                        .font(.caption2)
+                        .font(.caption)
                 }
             }
             .tint(isCaught ? .green : .secondary)
@@ -247,7 +249,7 @@ struct PokemonDetailView: View {
                         Image(systemName: "sparkles")
                             .font(.title2)
                         Text("Shiny")
-                            .font(.caption2)
+                            .font(.caption)
                     }
                 }
                 .tint(isShiny ? .yellow : .secondary)
@@ -259,7 +261,7 @@ struct PokemonDetailView: View {
                         Image(systemName: isOrigin ? "globe.americas.fill" : "globe.americas")
                             .font(.title2)
                         Text("Origin")
-                            .font(.caption2)
+                            .font(.caption)
                     }
                 }
                 .tint(isOrigin ? pokemon.primaryTypeColor : .secondary)
@@ -277,7 +279,7 @@ struct PokemonDetailView: View {
                     .foregroundStyle(.secondary)
                 if !isPremium {
                     Image(systemName: "lock.fill")
-                        .font(.caption2)
+                        .font(.caption)
                         .foregroundStyle(.orange)
                 }
             }
@@ -313,7 +315,7 @@ struct PokemonDetailView: View {
                     .padding(.vertical, 8)
             } else {
                 VStack(spacing: 0) {
-                    ForEach(Array(filteredLocations.enumerated()), id: \.element.gameId) { index, location in
+                    ForEach(filteredLocations.enumerated(), id: \.element.gameId) { index, location in
                         HStack(alignment: .top) {
                             Text(gameNameById[location.gameId] ?? "Unknown")
                                 .font(.subheadline)
@@ -359,6 +361,8 @@ struct PokemonDetailView: View {
             } else {
                 action()
             }
+        } else {
+            catchFeedbackTrigger.toggle()
         }
     }
 

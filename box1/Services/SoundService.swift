@@ -1,5 +1,4 @@
 import AVFoundation
-import UIKit
 
 final class SoundService {
     static let shared = SoundService()
@@ -32,7 +31,6 @@ final class SoundService {
     }
 
     func playCatchFeedback() {
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
         play("music_pipe_ramp_up")
     }
 

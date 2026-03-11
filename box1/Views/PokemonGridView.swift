@@ -68,6 +68,7 @@ struct PokemonGridView: View {
     @State private var showUncatchAlert = false
     @State private var pendingUncatchAction: (() -> Void)?
     @State private var showUpgrade = false
+    @State private var catchFeedbackTrigger = false
 
 
     private var isPremium: Bool { storeManager.isPurchased }
@@ -146,7 +147,7 @@ struct PokemonGridView: View {
 
         if !searchText.isEmpty {
             result = result.filter { mon in
-                mon.name.localizedCaseInsensitiveContains(searchText) ||
+                mon.name.localizedStandardContains(searchText) ||
                 String(mon.dexNumber).contains(searchText)
             }
         }
@@ -212,16 +213,15 @@ struct PokemonGridView: View {
                 }
                 .overlay(alignment: .bottomTrailing) {
                     if showScrollToTop {
-                        Button {
+                        Button("Scroll to Top", systemImage: "arrow.up") {
                             withAnimation {
                                 proxy.scrollTo("top", anchor: .top)
                             }
-                        } label: {
-                            Image(systemName: "arrow.up")
-                                .font(.body.weight(.semibold))
-                                .frame(width: 44, height: 44)
-                                .glassEffect(.regular, in: .circle)
                         }
+                        .labelStyle(.iconOnly)
+                        .font(.body.weight(.semibold))
+                        .frame(width: 44, height: 44)
+                        .glassEffect(.regular, in: .circle)
                         .tint(.primary)
                         .padding(.trailing, 32)
                         .padding(.bottom, 24)
@@ -255,6 +255,7 @@ struct PokemonGridView: View {
                         }
                     } label: {
                         Image(systemName: "arrow.up.arrow.down")
+                            .accessibilityLabel("Sort")
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -262,6 +263,7 @@ struct PokemonGridView: View {
                         showFilterSheet = true
                     } label: {
                         Image(systemName: hasActiveFilters ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease")
+                            .accessibilityLabel("Filters")
                     }
                 }
                 ToolbarSpacer(.fixed, placement: .topBarTrailing)
@@ -315,6 +317,7 @@ struct PokemonGridView: View {
             } message: {
                 Text("The nickname and notes for this Pokemon will be deleted.")
             }
+            .sensoryFeedback(.success, trigger: catchFeedbackTrigger)
         }
     }
 
@@ -342,7 +345,7 @@ struct PokemonGridView: View {
                         Text(selectedGameGroup.isEmpty ? "All" : selectedGameGroup)
                             .fontWeight(.medium)
                         Image(systemName: "chevron.up.chevron.down")
-                            .font(.caption2)
+                            .font(.caption)
                     }
                     .foregroundStyle(.blue)
                 }
@@ -392,21 +395,23 @@ struct PokemonGridView: View {
         let origin = entry?.isOriginCaught ?? false
         let regNumber = regionalNumber(for: item.pokemon)
         if isSelectMode {
-            PokemonCard(pokemon: item.pokemon, isCaught: caught, isShiny: shiny, isOrigin: origin, displayDexNumber: regNumber, form: item.form)
-                .overlay(alignment: .topLeading) {
-                    Image(systemName: selectedItems.contains(item.id) ? "checkmark.circle.fill" : "circle")
-                        .foregroundStyle(selectedItems.contains(item.id) ? Color.accentColor : .secondary)
-                        .font(.title3)
-                        .padding(6)
+            Button {
+                if selectedItems.contains(item.id) {
+                    selectedItems.remove(item.id)
+                } else {
+                    selectedItems.insert(item.id)
                 }
-                .onTapGesture {
-                    UISelectionFeedbackGenerator().selectionChanged()
-                    if selectedItems.contains(item.id) {
-                        selectedItems.remove(item.id)
-                    } else {
-                        selectedItems.insert(item.id)
+            } label: {
+                PokemonCard(pokemon: item.pokemon, isCaught: caught, isShiny: shiny, isOrigin: origin, displayDexNumber: regNumber, form: item.form)
+                    .overlay(alignment: .topLeading) {
+                        Image(systemName: selectedItems.contains(item.id) ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(selectedItems.contains(item.id) ? Color.accentColor : .secondary)
+                            .font(.title3)
+                            .padding(6)
                     }
-                }
+            }
+            .buttonStyle(.plain)
+            .sensoryFeedback(.selection, trigger: selectedItems)
         } else {
             NavigationLink {
                 PokemonDetailView(pokemon: item.pokemon, form: item.form)
@@ -535,6 +540,7 @@ struct PokemonGridView: View {
             }
         }
         SoundService.shared.playCatchFeedback()
+        catchFeedbackTrigger.toggle()
     }
 
     // MARK: - Tracking Actions
@@ -546,6 +552,8 @@ struct PokemonGridView: View {
         )
         if case .needsUncatch(let hasData, let action) = result {
             performUncatch(hasData: hasData, action: action)
+        } else {
+            catchFeedbackTrigger.toggle()
         }
     }
 

@@ -18,14 +18,14 @@ struct PokemonCard: View {
             .overlay(alignment: .topTrailing) {
                 if isShiny {
                     Image(systemName: "sparkles")
-                        .font(.caption2)
+                        .font(.caption)
                         .foregroundStyle(.yellow)
                         .padding(4)
                 }
             }
 
             Text(String(format: "#%03d", displayDexNumber ?? pokemon.dexNumber))
-                .font(.caption2)
+                .font(.caption)
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 3) {
@@ -49,10 +49,7 @@ struct PokemonCard: View {
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(isCaught ? pokemon.primaryTypeColor.opacity(0.15) : Color(.systemGray6))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(isOrigin ? pokemon.primaryTypeColor.opacity(0.6) : .clear, lineWidth: 2)
+                .stroke(isOrigin ? pokemon.primaryTypeColor.opacity(0.6) : .clear, lineWidth: 2)
         )
         .animation(.easeInOut(duration: 0.3), value: isCaught)
     }

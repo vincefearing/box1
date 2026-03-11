@@ -50,7 +50,7 @@ class CachedPokemon {
 
     func displayName(form: String) -> String {
         if form == "default" { return name.capitalized }
-        let formLabel = form.replacingOccurrences(of: "-", with: " ").capitalized
+        let formLabel = form.replacing("-", with: " ").capitalized
         return "\(formLabel) \(name.capitalized)"
     }
 }

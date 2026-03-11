@@ -2,8 +2,7 @@ import Foundation
 
 class SpriteService {
     private static let spritesDirectory: URL = {
-        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("sprites", isDirectory: true)
+        let dir = URL.documentsDirectory.appending(path: "sprites")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }()

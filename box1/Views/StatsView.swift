@@ -148,7 +148,7 @@ private struct StatSection: View {
                 if let lockedMessage {
                     HStack(spacing: 4) {
                         Image(systemName: "lock.fill")
-                            .font(.caption2)
+                            .font(.caption)
                         Text(lockedMessage)
                     }
                     .font(.caption)
@@ -202,7 +202,7 @@ private struct StatRow: View {
                 Spacer()
                 Text("\(count)/\(total)")
                     .fontWeight(.medium)
-                Text(String(format: "%.0f%%", percentage * 100))
+                Text(percentage, format: .percent.precision(.fractionLength(0)))
                     .foregroundStyle(.secondary)
                     .frame(width: 40, alignment: .trailing)
             }

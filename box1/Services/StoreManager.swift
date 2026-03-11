@@ -2,7 +2,7 @@ import Foundation
 import StoreKit
 import Supabase
 
-@Observable
+@MainActor @Observable
 final class StoreManager {
     static let productId = "com.box1.premium"
 
@@ -68,14 +68,13 @@ final class StoreManager {
     // MARK: - Transaction Listener
 
     private func listenForTransactions() -> Task<Void, Never> {
-        Task.detached { [weak self] in
+        Task { [weak self] in
             for await result in Transaction.updates {
                 guard let self else { return }
                 if case .verified(let transaction) = result {
-                    let purchased = transaction.revocationDate == nil
-                    await MainActor.run { self.isPurchased = purchased }
+                    self.isPurchased = transaction.revocationDate == nil
                     await transaction.finish()
-                    await self.syncPremiumStatus(purchased)
+                    await self.syncPremiumStatus(self.isPurchased)
                 }
             }
         }

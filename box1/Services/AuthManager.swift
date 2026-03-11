@@ -3,7 +3,7 @@ import AuthenticationServices
 import CryptoKit
 import Supabase
 
-@Observable
+@MainActor @Observable
 final class AuthManager {
     var session: Session?
     var profile: UserProfile?
