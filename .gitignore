@@ -31,6 +31,9 @@ __pycache__/
 
 # Claude Code
 CLAUDE.md
+.agents/
+.claude/skills/
+skills-lock.json
 
 # Secrets
 .env
