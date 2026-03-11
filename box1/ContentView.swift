@@ -3,8 +3,11 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AuthManager.self) private var authManager
+    @Environment(StoreManager.self) private var storeManager
     @Query(sort: \CachedPokemon.dexNumber) private var cachedPokemon: [CachedPokemon]
     @Query private var cachedGames: [CachedGame]
+
     var body: some View {
         TabView {
             Tab("Pokedex", systemImage: "square.grid.2x2") {
@@ -23,6 +26,9 @@ struct ContentView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .fullScreenCover(isPresented: .constant(!authManager.isSignedIn)) {
+            SignInView()
+        }
         .task {
             guard cachedPokemon.isEmpty else { return }
             do {

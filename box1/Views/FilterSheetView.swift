@@ -5,6 +5,10 @@ struct FilterSheetView: View {
     @Binding var selectedGeneration: Int?
     @Binding var showMissingOnly: Bool
     @Environment(\.dismiss) private var dismiss
+    @Environment(StoreManager.self) private var storeManager
+    @State private var showUpgrade = false
+
+    private var isPremium: Bool { storeManager.isPurchased }
 
     init(selectedTypes: Binding<Set<String>>, selectedGeneration: Binding<Int?>, showMissingOnly: Binding<Bool>) {
         self._selectedTypes = selectedTypes
@@ -51,14 +55,30 @@ struct FilterSheetView: View {
                 }
 
                 Section("Generation") {
-                    Picker("Generation", selection: $selectedGeneration) {
-                        Text("All").tag(Int?.none)
-                        ForEach(1...9, id: \.self) { gen in
-                            Text("\(gen)").tag(Int?.some(gen))
+                    if isPremium {
+                        Picker("Generation", selection: $selectedGeneration) {
+                            Text("All").tag(Int?.none)
+                            ForEach(1...9, id: \.self) { gen in
+                                Text("\(gen)").tag(Int?.some(gen))
+                            }
                         }
+                        .pickerStyle(.segmented)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    } else {
+                        Button {
+                            showUpgrade = true
+                        } label: {
+                            HStack {
+                                Text("Generation")
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Image(systemName: "lock.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .pickerStyle(.segmented)
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 }
 
                 Section {
@@ -86,6 +106,9 @@ struct FilterSheetView: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        .sheet(isPresented: $showUpgrade) {
+            PremiumUpgradeView()
+        }
     }
 
     private var hasActiveFilters: Bool {

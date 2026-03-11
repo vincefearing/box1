@@ -48,7 +48,7 @@ struct Pokemon: Codable, Sendable {
 
     struct PokemonLocation: Codable, Sendable {
         let gameId: Int
-        let locationInfo: String
+        let locationInfo: String?
 
         enum CodingKeys: String, CodingKey {
             case gameId = "game_id"

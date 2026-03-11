@@ -24,7 +24,10 @@ struct PokemonGridItem: Identifiable {
 struct PokemonGridView: View {
     init() {}
 
+    private static let freeGameGroups: Set<String> = ["Scarlet & Violet", "Legends: Z-A"]
+
     @Environment(\.modelContext) private var modelContext
+    @Environment(StoreManager.self) private var storeManager
     @Query(sort: \CachedPokemon.dexNumber) private var pokemon: [CachedPokemon]
     @Query(sort: \CachedGame.id) private var games: [CachedGame]
     @Query private var userPokemon: [UserPokemon]
@@ -47,9 +50,21 @@ struct PokemonGridView: View {
     @AppStorage("dismissUncatchWarning") private var dismissUncatchWarning = false
     @State private var showUncatchAlert = false
     @State private var pendingUncatchAction: (() -> Void)?
+    @State private var showUpgrade = false
+
+
+    private var isPremium: Bool { storeManager.isPurchased }
+
+    private func isFreeGameGroup(_ name: String) -> Bool {
+        name.isEmpty || Self.freeGameGroups.contains(name)
+    }
+
+    private var userPokemonByKey: [String: UserPokemon] {
+        Dictionary(uniqueKeysWithValues: userPokemon.map { ("\($0.pokemonId)_\($0.form)", $0) })
+    }
 
     private func userEntry(for dexNumber: Int, form: String) -> UserPokemon? {
-        userPokemon.first { $0.pokemonId == dexNumber && $0.form == form }
+        userPokemonByKey["\(dexNumber)_\(form)"]
     }
 
     private func isCaught(dexNumber: Int, form: String) -> Bool {
@@ -69,7 +84,7 @@ struct PokemonGridView: View {
                 groups.append((name: game.gameGroup, gameIds: ids))
             }
         }
-        return groups
+        return groups.reversed()
     }
 
     private var gameIdsByGroup: [String: Set<Int>] {
@@ -305,12 +320,16 @@ struct PokemonGridView: View {
                 }
             }
             .animation(.easeInOut(duration: 0.2), value: isSelectMode)
+            .searchable(text: $searchText, prompt: "Search Pokemon")
             .sheet(isPresented: $showFilterSheet) {
                 FilterSheetView(
                     selectedTypes: $selectedTypes,
                     selectedGeneration: $selectedGeneration,
                     showMissingOnly: $showMissingOnly
                 )
+            }
+            .sheet(isPresented: $showUpgrade) {
+                PremiumUpgradeView()
             }
             .alert("Remove from Collection?", isPresented: $showUncatchAlert) {
                 Button("Cancel", role: .cancel) { pendingUncatchAction = nil }
@@ -338,7 +357,15 @@ struct PokemonGridView: View {
                 Menu {
                     Button("All") { selectedGameGroup = "" }
                     ForEach(gameGroups, id: \.name) { group in
-                        Button(group.name) { selectedGameGroup = group.name }
+                        if isPremium || isFreeGameGroup(group.name) {
+                            Button(group.name) { selectedGameGroup = group.name }
+                        } else {
+                            Button {
+                                showUpgrade = true
+                            } label: {
+                                Label(group.name, systemImage: "lock.fill")
+                            }
+                        }
                     }
                 } label: {
                     HStack(spacing: 4) {
@@ -403,6 +430,7 @@ struct PokemonGridView: View {
                         .padding(6)
                 }
                 .onTapGesture {
+                    UISelectionFeedbackGenerator().selectionChanged()
                     if selectedItems.contains(item.id) {
                         selectedItems.remove(item.id)
                     } else {
@@ -425,7 +453,7 @@ struct PokemonGridView: View {
                             systemImage: caught ? "xmark.circle" : "checkmark.circle"
                         )
                     }
-                    if trackShiny {
+                    if isPremium && trackShiny {
                         Button {
                             toggleShiny(dexNumber: item.pokemon.dexNumber, form: item.form)
                         } label: {
@@ -435,7 +463,7 @@ struct PokemonGridView: View {
                             )
                         }
                     }
-                    if trackOrigin {
+                    if isPremium && trackOrigin {
                         Button {
                             toggleOrigin(dexNumber: item.pokemon.dexNumber, form: item.form)
                         } label: {
@@ -491,6 +519,12 @@ struct PokemonGridView: View {
                 modelContext.insert(entry)
             }
         }
+        playCatchFeedback()
+    }
+
+    private func playCatchFeedback() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        SoundService.shared.play("music_pipe_ramp_up")
     }
 
     private func toggleCaught(dexNumber: Int, form: String) {
@@ -501,9 +535,11 @@ struct PokemonGridView: View {
             }
         } else if let existing = userEntry(for: dexNumber, form: form) {
             existing.isCaught = true
+            playCatchFeedback()
         } else {
             let entry = UserPokemon(pokemonId: dexNumber, form: form, isCaught: true)
             modelContext.insert(entry)
+            playCatchFeedback()
         }
     }
 
@@ -521,26 +557,37 @@ struct PokemonGridView: View {
             existing.isCaught = false
             existing.nickname = ""
             existing.notes = ""
+            SoundService.shared.play("slide_drop")
         }
     }
 
     private func toggleShiny(dexNumber: Int, form: String) {
         if let existing = userEntry(for: dexNumber, form: form) {
+            let wasCaught = existing.isCaught
             existing.isShinyCaught.toggle()
-            if existing.isShinyCaught { existing.isCaught = true }
+            if existing.isShinyCaught && !wasCaught {
+                existing.isCaught = true
+                playCatchFeedback()
+            }
         } else {
             let entry = UserPokemon(pokemonId: dexNumber, form: form, isCaught: true, isShinyCaught: true)
             modelContext.insert(entry)
+            playCatchFeedback()
         }
     }
 
     private func toggleOrigin(dexNumber: Int, form: String) {
         if let existing = userEntry(for: dexNumber, form: form) {
+            let wasCaught = existing.isCaught
             existing.isOriginCaught.toggle()
-            if existing.isOriginCaught { existing.isCaught = true }
+            if existing.isOriginCaught && !wasCaught {
+                existing.isCaught = true
+                playCatchFeedback()
+            }
         } else {
             let entry = UserPokemon(pokemonId: dexNumber, form: form, isCaught: true, isOriginCaught: true)
             modelContext.insert(entry)
+            playCatchFeedback()
         }
     }
 }

@@ -7,6 +7,7 @@ struct PokemonDetailView: View {
     let form: String
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(StoreManager.self) private var storeManager
     @Query private var userPokemon: [UserPokemon]
     @Query(sort: \CachedGame.id) private var games: [CachedGame]
     @AppStorage("trackShiny") private var trackShiny = false
@@ -15,6 +16,11 @@ struct PokemonDetailView: View {
     @AppStorage("dismissUncatchWarning") private var dismissUncatchWarning = false
     @State private var audioPlayer: AVPlayer?
     @State private var showUncatchAlert = false
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case nickname, notes }
+
+    private var isPremium: Bool { storeManager.isPurchased }
 
     private var entry: UserPokemon? {
         userPokemon.first { $0.pokemonId == pokemon.dexNumber && $0.form == form }
@@ -42,20 +48,25 @@ struct PokemonDetailView: View {
         ScrollView {
             VStack(spacing: 20) {
                 spriteSection
+                Text(form == "default" ? pokemon.name.capitalized : "\(form.replacingOccurrences(of: "-", with: " ").capitalized) \(pokemon.name.capitalized)")
+                    .font(.title2)
+                    .fontWeight(.bold)
                 typeSection
-                if isCaught { nicknameSection }
+                nicknameSection
                 statsSection
                 if let description = pokemon.pokemonDescription, !description.isEmpty {
                     descriptionSection(description)
                 }
                 crySection
                 actionSection
-                if isCaught { notesSection }
+                notesSection
                 locationSection
             }
             .padding()
+            .contentShape(Rectangle())
+            .onTapGesture { focusedField = nil }
         }
-        .navigationTitle(pokemon.name.capitalized)
+        .scrollDismissesKeyboard(.interactively)
         .navigationBarTitleDisplayMode(.inline)
         .alert("Remove from Collection?", isPresented: $showUncatchAlert) {
             Button("Cancel", role: .cancel) {}
@@ -114,16 +125,34 @@ struct PokemonDetailView: View {
     // MARK: - Nickname
 
     private var nicknameSection: some View {
-        TextField("Add a nickname...", text: Binding(
-            get: { entry?.nickname ?? "" },
-            set: { newValue in
-                entry?.nickname = newValue
+        Group {
+            if isCaught && isPremium {
+                TextField("Add a nickname...", text: Binding(
+                    get: { entry?.nickname ?? "" },
+                    set: { newValue in
+                        entry?.nickname = newValue
+                    }
+                ))
+                .focused($focusedField, equals: .nickname)
+                .font(.title3)
+                .fontWeight(.medium)
+                .multilineTextAlignment(.center)
+            } else {
+                HStack(spacing: 6) {
+                    if !isPremium {
+                        Image(systemName: "lock.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                    Text(entry?.nickname.isEmpty == false ? entry!.nickname : "Add a nickname...")
+                        .font(.title3)
+                        .fontWeight(.medium)
+                }
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
             }
-        ))
-        .font(.title3)
-        .fontWeight(.medium)
-        .multilineTextAlignment(.center)
-        .foregroundStyle(.primary)
+        }
     }
 
     // MARK: - Stats
@@ -208,7 +237,7 @@ struct PokemonDetailView: View {
             }
             .tint(isCaught ? .green : .secondary)
 
-            if trackShiny {
+            if isPremium && trackShiny {
                 Button { toggleShiny() } label: {
                     VStack(spacing: 4) {
                         Image(systemName: "sparkles")
@@ -220,7 +249,7 @@ struct PokemonDetailView: View {
                 .tint(isShiny ? .yellow : .secondary)
             }
 
-            if trackOrigin {
+            if isPremium && trackOrigin {
                 Button { toggleOrigin() } label: {
                     VStack(spacing: 4) {
                         Image(systemName: isOrigin ? "globe.americas.fill" : "globe.americas")
@@ -238,17 +267,31 @@ struct PokemonDetailView: View {
 
     private var notesSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Notes")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            TextField("Add notes...", text: Binding(
-                get: { entry?.notes ?? "" },
-                set: { newValue in
-                    entry?.notes = newValue
+            HStack(spacing: 6) {
+                Text("Notes")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if !isPremium {
+                    Image(systemName: "lock.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
                 }
-            ), axis: .vertical)
-            .lineLimit(3...6)
-            .font(.subheadline)
+            }
+            if isCaught && isPremium {
+                TextField("Add notes...", text: Binding(
+                    get: { entry?.notes ?? "" },
+                    set: { newValue in
+                        entry?.notes = newValue
+                    }
+                ), axis: .vertical)
+                .focused($focusedField, equals: .notes)
+                .lineLimit(3...6)
+                .font(.subheadline)
+            } else {
+                Text(entry?.notes.isEmpty == false ? entry!.notes : "Add notes...")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -272,7 +315,7 @@ struct PokemonDetailView: View {
                                 .font(.subheadline)
                                 .fontWeight(.medium)
                                 .frame(width: 100, alignment: .leading)
-                            Text(location.locationInfo)
+                            Text(location.locationInfo ?? "Unknown")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .trailing)
@@ -306,6 +349,11 @@ struct PokemonDetailView: View {
         audioPlayer?.play()
     }
 
+    private func playCatchFeedback() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        SoundService.shared.play("music_pipe_ramp_up")
+    }
+
     private func toggleCaught() {
         if let existing = entry, existing.isCaught {
             let hasData = !existing.nickname.isEmpty || !existing.notes.isEmpty
@@ -316,9 +364,11 @@ struct PokemonDetailView: View {
             }
         } else if let existing = entry {
             existing.isCaught = true
+            playCatchFeedback()
         } else {
             let newEntry = UserPokemon(pokemonId: pokemon.dexNumber, form: form, isCaught: true)
             modelContext.insert(newEntry)
+            playCatchFeedback()
         }
     }
 
@@ -327,26 +377,37 @@ struct PokemonDetailView: View {
             existing.isCaught = false
             existing.nickname = ""
             existing.notes = ""
+            SoundService.shared.play("slide_drop")
         }
     }
 
     private func toggleShiny() {
         if let existing = entry {
+            let wasCaught = existing.isCaught
             existing.isShinyCaught.toggle()
-            if existing.isShinyCaught { existing.isCaught = true }
+            if existing.isShinyCaught && !wasCaught {
+                existing.isCaught = true
+                playCatchFeedback()
+            }
         } else {
             let newEntry = UserPokemon(pokemonId: pokemon.dexNumber, form: form, isCaught: true, isShinyCaught: true)
             modelContext.insert(newEntry)
+            playCatchFeedback()
         }
     }
 
     private func toggleOrigin() {
         if let existing = entry {
+            let wasCaught = existing.isCaught
             existing.isOriginCaught.toggle()
-            if existing.isOriginCaught { existing.isCaught = true }
+            if existing.isOriginCaught && !wasCaught {
+                existing.isCaught = true
+                playCatchFeedback()
+            }
         } else {
             let newEntry = UserPokemon(pokemonId: pokemon.dexNumber, form: form, isCaught: true, isOriginCaught: true)
             modelContext.insert(newEntry)
+            playCatchFeedback()
         }
     }
 }

@@ -94,10 +94,10 @@ def load_pokemon(data, type_lookup, game_lookup):
 
     regional_dex = {}
     for game, number in data["regional_dex_numbers"].items():
-        for resolved_game in resolve_game_names(game):
-            if resolved_game in game_lookup:
-                game_id = game_lookup[resolved_game]
-                regional_dex[game_id] = {"dex_number": pokemon["dex_number"], "game_id": game_id, "regional_number": number}
+        game = GAME_NAME_ALIASES.get(game, game)
+        if game in game_lookup:
+            game_id = game_lookup[game]
+            regional_dex[game_id] = {"dex_number": pokemon["dex_number"], "game_id": game_id, "regional_number": number}
 
     if regional_dex:
         supabase.table("regional_dex_numbers").upsert(list(regional_dex.values()), on_conflict="dex_number,game_id").execute()
