@@ -16,6 +16,7 @@ struct PokemonDetailView: View {
     @AppStorage("dismissUncatchWarning") private var dismissUncatchWarning = false
     @State private var audioPlayer: AVPlayer?
     @State private var showUncatchAlert = false
+    @State private var pendingUncatchAction: (() -> Void)?
     @FocusState private var focusedField: Field?
 
     private enum Field { case nickname, notes }
@@ -48,7 +49,7 @@ struct PokemonDetailView: View {
         ScrollView {
             VStack(spacing: 20) {
                 spriteSection
-                Text(form == "default" ? pokemon.name.capitalized : "\(form.replacingOccurrences(of: "-", with: " ").capitalized) \(pokemon.name.capitalized)")
+                Text(pokemon.displayName(form: form))
                     .font(.title2)
                     .fontWeight(.bold)
                 typeSection
@@ -69,13 +70,15 @@ struct PokemonDetailView: View {
         .scrollDismissesKeyboard(.interactively)
         .navigationBarTitleDisplayMode(.inline)
         .alert("Remove from Collection?", isPresented: $showUncatchAlert) {
-            Button("Cancel", role: .cancel) {}
+            Button("Cancel", role: .cancel) { pendingUncatchAction = nil }
             Button("Remove", role: .destructive) {
-                confirmUncatch()
+                pendingUncatchAction?()
+                pendingUncatchAction = nil
             }
             Button("Remove & Don't Warn Again", role: .destructive) {
                 dismissUncatchWarning = true
-                confirmUncatch()
+                pendingUncatchAction?()
+                pendingUncatchAction = nil
             }
         } message: {
             Text("The nickname and notes for this Pokemon will be deleted.")
@@ -84,14 +87,8 @@ struct PokemonDetailView: View {
 
     // MARK: - Sprite
 
-    private var spriteUrl: String? {
-        let sprite = pokemon.sprites.first { $0.form == form }
-        if isShiny { return sprite?.shinyUrl ?? sprite?.normalUrl }
-        return sprite?.normalUrl
-    }
-
     private var spriteSection: some View {
-        SpriteImage(dexNumber: pokemon.dexNumber, form: form, shiny: isShiny, remoteUrl: spriteUrl)
+        SpriteImage(dexNumber: pokemon.dexNumber, form: form, shiny: isShiny, remoteUrl: pokemon.spriteUrl(form: form, shiny: isShiny))
             .frame(height: 200)
             .frame(maxWidth: .infinity)
         .overlay(alignment: .topTrailing) {
@@ -258,7 +255,7 @@ struct PokemonDetailView: View {
                             .font(.caption2)
                     }
                 }
-                .tint(isOrigin ? typeColor : .secondary)
+                .tint(isOrigin ? pokemon.primaryTypeColor : .secondary)
             }
         }
     }
@@ -334,12 +331,7 @@ struct PokemonDetailView: View {
         .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12))
     }
 
-    // MARK: - Helpers
-
-    private var typeColor: Color {
-        guard let hex = pokemon.types.first?.color else { return .gray }
-        return Color(hex: hex)
-    }
+    // MARK: - Actions
 
     private func playCry() {
         guard let url = URL(string: pokemon.cryUrl) else { return }
@@ -349,65 +341,31 @@ struct PokemonDetailView: View {
         audioPlayer?.play()
     }
 
-    private func playCatchFeedback() {
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        SoundService.shared.play("music_pipe_ramp_up")
-    }
-
     private func toggleCaught() {
-        if let existing = entry, existing.isCaught {
-            let hasData = !existing.nickname.isEmpty || !existing.notes.isEmpty
+        let result = PokemonTracking.toggleCaught(
+            entry: entry, dexNumber: pokemon.dexNumber, form: form, context: modelContext
+        )
+        if case .needsUncatch(let hasData, let action) = result {
             if hasData && !dismissUncatchWarning {
+                pendingUncatchAction = action
                 showUncatchAlert = true
             } else {
-                confirmUncatch()
+                action()
             }
-        } else if let existing = entry {
-            existing.isCaught = true
-            playCatchFeedback()
-        } else {
-            let newEntry = UserPokemon(pokemonId: pokemon.dexNumber, form: form, isCaught: true)
-            modelContext.insert(newEntry)
-            playCatchFeedback()
-        }
-    }
-
-    private func confirmUncatch() {
-        if let existing = entry {
-            existing.isCaught = false
-            existing.nickname = ""
-            existing.notes = ""
-            SoundService.shared.play("slide_drop")
         }
     }
 
     private func toggleShiny() {
-        if let existing = entry {
-            let wasCaught = existing.isCaught
-            existing.isShinyCaught.toggle()
-            if existing.isShinyCaught && !wasCaught {
-                existing.isCaught = true
-                playCatchFeedback()
-            }
-        } else {
-            let newEntry = UserPokemon(pokemonId: pokemon.dexNumber, form: form, isCaught: true, isShinyCaught: true)
-            modelContext.insert(newEntry)
-            playCatchFeedback()
-        }
+        PokemonTracking.toggleTracking(
+            \.isShinyCaught, entry: entry,
+            dexNumber: pokemon.dexNumber, form: form, context: modelContext
+        )
     }
 
     private func toggleOrigin() {
-        if let existing = entry {
-            let wasCaught = existing.isCaught
-            existing.isOriginCaught.toggle()
-            if existing.isOriginCaught && !wasCaught {
-                existing.isCaught = true
-                playCatchFeedback()
-            }
-        } else {
-            let newEntry = UserPokemon(pokemonId: pokemon.dexNumber, form: form, isCaught: true, isOriginCaught: true)
-            modelContext.insert(newEntry)
-            playCatchFeedback()
-        }
+        PokemonTracking.toggleTracking(
+            \.isOriginCaught, entry: entry,
+            dexNumber: pokemon.dexNumber, form: form, context: modelContext
+        )
     }
 }

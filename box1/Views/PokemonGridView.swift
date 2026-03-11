@@ -15,9 +15,7 @@ struct PokemonGridItem: Identifiable {
     var id: String { "\(pokemon.dexNumber)_\(form)" }
 
     var displayName: String {
-        if form == "default" { return pokemon.name.capitalized }
-        let formLabel = form.replacingOccurrences(of: "-", with: " ").capitalized
-        return "\(formLabel) \(pokemon.name.capitalized)"
+        pokemon.displayName(form: form)
     }
 }
 
@@ -63,16 +61,17 @@ struct PokemonGridView: View {
         Dictionary(uniqueKeysWithValues: userPokemon.map { ("\($0.pokemonId)_\($0.form)", $0) })
     }
 
-    private func userEntry(for dexNumber: Int, form: String) -> UserPokemon? {
-        userPokemonByKey["\(dexNumber)_\(form)"]
-    }
-
-    private func isCaught(dexNumber: Int, form: String) -> Bool {
-        userEntry(for: dexNumber, form: form)?.isCaught ?? false
+    private func userEntry(for dexNumber: Int, form: String, lookup: [String: UserPokemon]) -> UserPokemon? {
+        lookup["\(dexNumber)_\(form)"]
     }
 
     private var caughtDexNumbers: Set<Int> {
         Set(userPokemon.filter(\.isCaught).map(\.pokemonId))
+    }
+
+    private var gameIdsByGroup: [String: Set<Int>] {
+        Dictionary(grouping: games, by: \.gameGroup)
+            .mapValues { Set($0.map(\.id)) }
     }
 
     private var gameGroups: [(name: String, gameIds: [Int])] {
@@ -80,29 +79,31 @@ struct PokemonGridView: View {
         var groups: [(name: String, gameIds: [Int])] = []
         for game in games {
             if seen.insert(game.gameGroup).inserted {
-                let ids = games.filter { $0.gameGroup == game.gameGroup }.map(\.id)
+                let ids = gameIdsByGroup[game.gameGroup].map(Array.init) ?? []
                 groups.append((name: game.gameGroup, gameIds: ids))
             }
         }
         return groups.reversed()
     }
 
-    private var gameIdsByGroup: [String: Set<Int>] {
-        var dict: [String: Set<Int>] = [:]
-        for group in gameGroups {
-            dict[group.name] = Set(group.gameIds)
-        }
-        return dict
-    }
-
     private var hasActiveFilters: Bool {
         !selectedTypes.isEmpty || selectedGeneration != nil || showMissingOnly
     }
 
-    private var filteredDexNumbers: Set<Int> {
-        var result = pokemon
+    private var selectedGameIds: Set<Int>? {
+        guard !selectedGameGroup.isEmpty else { return nil }
+        return gameIdsByGroup[selectedGameGroup]
+    }
 
-        if !selectedGameGroup.isEmpty, let gameIds = gameIdsByGroup[selectedGameGroup] {
+    private func regionalNumber(for mon: CachedPokemon) -> Int? {
+        guard let gameIds = selectedGameIds else { return nil }
+        return mon.regionalDexNumbers.first { gameIds.contains($0.gameId) }?.regionalNumber
+    }
+
+    private var filteredPokemon: [CachedPokemon] {
+        var result = Array(pokemon)
+
+        if let gameIds = selectedGameIds {
             result = result.filter { mon in
                 mon.regionalDexNumbers.contains { gameIds.contains($0.gameId) }
             }
@@ -129,22 +130,6 @@ struct PokemonGridView: View {
             }
         }
 
-        return Set(result.map(\.dexNumber))
-    }
-
-    private var selectedGameIds: Set<Int>? {
-        guard !selectedGameGroup.isEmpty else { return nil }
-        return gameIdsByGroup[selectedGameGroup]
-    }
-
-    private func regionalNumber(for mon: CachedPokemon) -> Int? {
-        guard let gameIds = selectedGameIds else { return nil }
-        return mon.regionalDexNumbers.first { gameIds.contains($0.gameId) }?.regionalNumber
-    }
-
-    private var filteredPokemon: [CachedPokemon] {
-        let dexNumbers = filteredDexNumbers
-        var result = pokemon.filter { dexNumbers.contains($0.dexNumber) }
         if let gameIds = selectedGameIds {
             result.sort { a, b in
                 let aNum = a.regionalDexNumbers.first { gameIds.contains($0.gameId) }?.regionalNumber ?? Int.max
@@ -154,7 +139,7 @@ struct PokemonGridView: View {
         } else {
             switch sortOption {
             case .numberAsc:
-                break // already sorted by dex number asc from @Query
+                break
             case .numberDesc:
                 result.reverse()
             case .nameAsc:
@@ -183,20 +168,18 @@ struct PokemonGridView: View {
         }
     }
 
-    private var caughtCount: Int {
-        filteredDexNumbers.intersection(caughtDexNumbers).count
-    }
-
-    private var progressValue: Double {
-        guard !filteredDexNumbers.isEmpty else { return 0 }
-        return Double(caughtCount) / Double(filteredDexNumbers.count)
-    }
-
     var body: some View {
+        let lookup = userPokemonByKey
+        let filtered = filteredPokemon
+        let dexNumbers = Set(filtered.map(\.dexNumber))
+        let caught = dexNumbers.intersection(caughtDexNumbers).count
+        let total = filtered.count
+        let progress = dexNumbers.isEmpty ? 0.0 : Double(caught) / Double(dexNumbers.count)
+
         NavigationStack {
             ScrollViewReader { proxy in
                 ScrollView {
-                    pokemonGrid
+                    pokemonGrid(lookup: lookup)
                         .padding(.horizontal)
                         .padding(.top, 12)
                         .id("top")
@@ -227,7 +210,7 @@ struct PokemonGridView: View {
                 .animation(.easeInOut(duration: 0.2), value: showScrollToTop)
             }
             .safeAreaInset(edge: .top, spacing: 0) {
-                filterHeader
+                filterHeader(caught: caught, total: total, progress: progress)
                     .padding(.horizontal)
                     .padding(.vertical, 8)
                     .background(.ultraThinMaterial)
@@ -276,47 +259,7 @@ struct PokemonGridView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 if isSelectMode {
-                    HStack(spacing: 12) {
-                        Text("\(selectedItems.count) selected")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(.bar, in: Capsule())
-
-                        Spacer()
-
-                        if allSelectedAreCaught {
-                            Button {
-                                markSelectedAsUncaught()
-                            } label: {
-                                Label("Remove", systemImage: "xmark.circle")
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                            }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(.bar, in: Capsule())
-                            .disabled(selectedItems.isEmpty)
-                        } else {
-                            Button {
-                                markSelectedAsCaught()
-                                isSelectMode = false
-                                selectedItems.removeAll()
-                            } label: {
-                                Label("Catch", systemImage: "checkmark.circle")
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                            }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(.bar, in: Capsule())
-                            .disabled(selectedItems.isEmpty)
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.bottom, 8)
-                    .transition(.move(edge: .bottom))
+                    selectModeBar(lookup: lookup)
                 }
             }
             .animation(.easeInOut(duration: 0.2), value: isSelectMode)
@@ -348,7 +291,7 @@ struct PokemonGridView: View {
         }
     }
 
-    private var filterHeader: some View {
+    private func filterHeader(caught: Int, total: Int, progress: Double) -> some View {
         VStack(spacing: 10) {
             HStack {
                 Text("Game(s)")
@@ -384,7 +327,7 @@ struct PokemonGridView: View {
                     Text("Caught")
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text("\(caughtCount)/\(filteredPokemon.count)")
+                    Text("\(caught)/\(total)")
                         .fontWeight(.medium)
                 }
                 .font(.subheadline)
@@ -394,7 +337,7 @@ struct PokemonGridView: View {
                             .fill(Color(.systemGray4))
                         RoundedRectangle(cornerRadius: 4)
                             .fill(Color.accentColor)
-                            .frame(width: geo.size.width * progressValue)
+                            .frame(width: geo.size.width * progress)
                     }
                 }
                 .frame(height: 8)
@@ -405,18 +348,18 @@ struct PokemonGridView: View {
         .padding(.vertical, 10)
     }
 
-    private var pokemonGrid: some View {
+    private func pokemonGrid(lookup: [String: UserPokemon]) -> some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
             ForEach(gridItems) { item in
-                cardView(for: item)
+                cardView(for: item, lookup: lookup)
             }
         }
         .id(selectedGameGroup)
     }
 
     @ViewBuilder
-    private func cardView(for item: PokemonGridItem) -> some View {
-        let entry = userEntry(for: item.pokemon.dexNumber, form: item.form)
+    private func cardView(for item: PokemonGridItem, lookup: [String: UserPokemon]) -> some View {
+        let entry = userEntry(for: item.pokemon.dexNumber, form: item.form, lookup: lookup)
         let caught = entry?.isCaught ?? false
         let shiny = entry?.isShinyCaught ?? false
         let origin = entry?.isOriginCaught ?? false
@@ -477,16 +420,59 @@ struct PokemonGridView: View {
         }
     }
 
-    private var allSelectedAreCaught: Bool {
-        !selectedItems.isEmpty && selectedItems.allSatisfy { id in
+    // MARK: - Select Mode
+
+    private func selectModeBar(lookup: [String: UserPokemon]) -> some View {
+        let allCaught = !selectedItems.isEmpty && selectedItems.allSatisfy { id in
             let parts = id.split(separator: "_", maxSplits: 1)
             guard let dexNumber = Int(parts[0]) else { return false }
-            let form = String(parts[1])
-            return isCaught(dexNumber: dexNumber, form: form)
+            return userEntry(for: dexNumber, form: String(parts[1]), lookup: lookup)?.isCaught ?? false
         }
+
+        return HStack(spacing: 12) {
+            Text("\(selectedItems.count) selected")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(.bar, in: Capsule())
+
+            Spacer()
+
+            if allCaught {
+                Button {
+                    markSelectedAsUncaught(lookup: lookup)
+                } label: {
+                    Label("Remove", systemImage: "xmark.circle")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(.bar, in: Capsule())
+                .disabled(selectedItems.isEmpty)
+            } else {
+                Button {
+                    markSelectedAsCaught(lookup: lookup)
+                    isSelectMode = false
+                    selectedItems.removeAll()
+                } label: {
+                    Label("Catch", systemImage: "checkmark.circle")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(.bar, in: Capsule())
+                .disabled(selectedItems.isEmpty)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.bottom, 8)
+        .transition(.move(edge: .bottom))
     }
 
-    private func markSelectedAsUncaught() {
+    private func markSelectedAsUncaught(lookup: [String: UserPokemon]) {
         let itemsToUncatch = selectedItems.compactMap { id -> (Int, String)? in
             let parts = id.split(separator: "_", maxSplits: 1)
             guard let dexNumber = Int(parts[0]) else { return nil }
@@ -494,52 +480,45 @@ struct PokemonGridView: View {
         }
 
         let anyHasData = itemsToUncatch.contains { dexNumber, form in
-            guard let entry = userEntry(for: dexNumber, form: form) else { return false }
+            guard let entry = userEntry(for: dexNumber, form: form, lookup: lookup) else { return false }
             return !entry.nickname.isEmpty || !entry.notes.isEmpty
         }
 
         performUncatch(hasData: anyHasData) {
             for (dexNumber, form) in itemsToUncatch {
-                self.uncatchAndClear(dexNumber: dexNumber, form: form)
+                if let entry = self.userEntry(for: dexNumber, form: form, lookup: lookup) {
+                    PokemonTracking.uncatch(entry: entry)
+                }
             }
             self.isSelectMode = false
             self.selectedItems.removeAll()
         }
     }
 
-    private func markSelectedAsCaught() {
+    private func markSelectedAsCaught(lookup: [String: UserPokemon]) {
         for id in selectedItems {
             let parts = id.split(separator: "_", maxSplits: 1)
             guard let dexNumber = Int(parts[0]) else { continue }
             let form = String(parts[1])
-            if let existing = userEntry(for: dexNumber, form: form) {
+            if let existing = userEntry(for: dexNumber, form: form, lookup: lookup) {
                 existing.isCaught = true
             } else {
                 let entry = UserPokemon(pokemonId: dexNumber, form: form, isCaught: true)
                 modelContext.insert(entry)
             }
         }
-        playCatchFeedback()
+        SoundService.shared.playCatchFeedback()
     }
 
-    private func playCatchFeedback() {
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        SoundService.shared.play("music_pipe_ramp_up")
-    }
+    // MARK: - Tracking Actions
 
     private func toggleCaught(dexNumber: Int, form: String) {
-        if let existing = userEntry(for: dexNumber, form: form), existing.isCaught {
-            let hasData = !existing.nickname.isEmpty || !existing.notes.isEmpty
-            performUncatch(hasData: hasData) {
-                self.uncatchAndClear(dexNumber: dexNumber, form: form)
-            }
-        } else if let existing = userEntry(for: dexNumber, form: form) {
-            existing.isCaught = true
-            playCatchFeedback()
-        } else {
-            let entry = UserPokemon(pokemonId: dexNumber, form: form, isCaught: true)
-            modelContext.insert(entry)
-            playCatchFeedback()
+        let entry = userPokemonByKey["\(dexNumber)_\(form)"]
+        let result = PokemonTracking.toggleCaught(
+            entry: entry, dexNumber: dexNumber, form: form, context: modelContext
+        )
+        if case .needsUncatch(let hasData, let action) = result {
+            performUncatch(hasData: hasData, action: action)
         }
     }
 
@@ -552,43 +531,20 @@ struct PokemonGridView: View {
         }
     }
 
-    private func uncatchAndClear(dexNumber: Int, form: String) {
-        if let existing = userEntry(for: dexNumber, form: form) {
-            existing.isCaught = false
-            existing.nickname = ""
-            existing.notes = ""
-            SoundService.shared.play("slide_drop")
-        }
-    }
-
     private func toggleShiny(dexNumber: Int, form: String) {
-        if let existing = userEntry(for: dexNumber, form: form) {
-            let wasCaught = existing.isCaught
-            existing.isShinyCaught.toggle()
-            if existing.isShinyCaught && !wasCaught {
-                existing.isCaught = true
-                playCatchFeedback()
-            }
-        } else {
-            let entry = UserPokemon(pokemonId: dexNumber, form: form, isCaught: true, isShinyCaught: true)
-            modelContext.insert(entry)
-            playCatchFeedback()
-        }
+        let entry = userPokemonByKey["\(dexNumber)_\(form)"]
+        PokemonTracking.toggleTracking(
+            \.isShinyCaught, entry: entry,
+            dexNumber: dexNumber, form: form, context: modelContext
+        )
     }
 
     private func toggleOrigin(dexNumber: Int, form: String) {
-        if let existing = userEntry(for: dexNumber, form: form) {
-            let wasCaught = existing.isCaught
-            existing.isOriginCaught.toggle()
-            if existing.isOriginCaught && !wasCaught {
-                existing.isCaught = true
-                playCatchFeedback()
-            }
-        } else {
-            let entry = UserPokemon(pokemonId: dexNumber, form: form, isCaught: true, isOriginCaught: true)
-            modelContext.insert(entry)
-            playCatchFeedback()
-        }
+        let entry = userPokemonByKey["\(dexNumber)_\(form)"]
+        PokemonTracking.toggleTracking(
+            \.isOriginCaught, entry: entry,
+            dexNumber: dexNumber, form: form, context: modelContext
+        )
     }
 }
 #Preview {

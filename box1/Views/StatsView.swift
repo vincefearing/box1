@@ -17,40 +17,42 @@ struct StatsView: View {
     private var emptyStats: StatTotals {
         StatTotals(baseCaught: 0, baseTotal: pokemon.count)
     }
-    private var caughtStats: StatTotals { computeStats(using: \.isCaught) }
-    private var shinyStats: StatTotals { computeStats(using: \.isShinyCaught) }
-    private var originStats: StatTotals { computeStats(using: \.isOriginCaught) }
 
-    private var activeFormToggles: [FormToggle] {
-        var toggles: [FormToggle] = []
-        if showMegas { toggles.append(.mega) }
-        if showGigantamax { toggles.append(.gigantamax) }
-        if showFemales { toggles.append(.female) }
-        if showOtherForms { toggles.append(.other) }
-        return toggles
+    private var activeFormCategories: [FormCategory] {
+        var categories: [FormCategory] = []
+        if showMegas { categories.append(.mega) }
+        if showGigantamax { categories.append(.gigantamax) }
+        if showFemales { categories.append(.female) }
+        if showOtherForms { categories.append(.other) }
+        return categories
+    }
+
+    private var allStats: (caught: StatTotals, shiny: StatTotals, origin: StatTotals) {
+        computeAllStats()
     }
 
     var body: some View {
+        let stats = allStats
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     StatSection(
                         title: "Caught", icon: "checkmark.circle.fill", color: .green,
-                        stats: caughtStats, formToggles: activeFormToggles
+                        stats: stats.caught, formCategories: activeFormCategories
                     )
 
                     StatSection(
                         title: "Shiny", icon: "sparkles", color: .yellow,
-                        stats: trackShiny ? shinyStats : emptyStats,
-                        formToggles: activeFormToggles,
+                        stats: trackShiny ? stats.shiny : emptyStats,
+                        formCategories: activeFormCategories,
                         enabled: trackShiny,
                         lockedMessage: isPremium ? nil : "Premium"
                     )
 
                     StatSection(
                         title: "Origin", icon: "globe.americas.fill", color: .blue,
-                        stats: trackOrigin ? originStats : emptyStats,
-                        formToggles: activeFormToggles,
+                        stats: trackOrigin ? stats.origin : emptyStats,
+                        formCategories: activeFormCategories,
                         enabled: trackOrigin,
                         lockedMessage: isPremium ? nil : "Premium"
                     )
@@ -61,97 +63,67 @@ struct StatsView: View {
         }
     }
 
-    // MARK: - Stat Computation
+    // MARK: - Single-Pass Stat Computation
 
-    private func computeStats(using keyPath: KeyPath<UserPokemon, Bool>) -> StatTotals {
-        let trackedEntries = userPokemon.filter { $0[keyPath: keyPath] }
+    private func computeAllStats() -> (caught: StatTotals, shiny: StatTotals, origin: StatTotals) {
+        let caughtByKey = Dictionary(grouping: userPokemon.filter(\.isCaught)) { "\($0.pokemonId)_\($0.form)" }
+        let shinyByKey = Dictionary(grouping: userPokemon.filter(\.isShinyCaught)) { "\($0.pokemonId)_\($0.form)" }
+        let originByKey = Dictionary(grouping: userPokemon.filter(\.isOriginCaught)) { "\($0.pokemonId)_\($0.form)" }
 
         let baseTotal = pokemon.count
-        let baseCaughtIds = Set(trackedEntries.filter { $0.form == "default" }.map(\.pokemonId))
-        let baseCaught = baseCaughtIds.count
-
-        var megaCaught = 0, megaTotal = 0
-        var gmaxCaught = 0, gmaxTotal = 0
-        var femaleCaught = 0, femaleTotal = 0
-        var otherCaught = 0, otherTotal = 0
-
-        let trackedByKey = Dictionary(grouping: trackedEntries) { "\($0.pokemonId)_\($0.form)" }
+        var caughtBase = 0, shinyBase = 0, originBase = 0
+        var caughtForms: [FormCategory: (caught: Int, total: Int)] = [:]
+        var shinyForms: [FormCategory: (caught: Int, total: Int)] = [:]
+        var originForms: [FormCategory: (caught: Int, total: Int)] = [:]
 
         for p in pokemon {
+            let defaultKey = "\(p.dexNumber)_default"
+            if caughtByKey[defaultKey] != nil { caughtBase += 1 }
+            if shinyByKey[defaultKey] != nil { shinyBase += 1 }
+            if originByKey[defaultKey] != nil { originBase += 1 }
+
             for sprite in p.sprites {
                 guard let category = FormCategory.categorize(sprite.form) else { continue }
-                let isTracked = trackedByKey["\(p.dexNumber)_\(sprite.form)"] != nil
-
+                let shouldCount: Bool
                 switch category {
-                case .mega:
-                    if showMegas { megaTotal += 1; if isTracked { megaCaught += 1 } }
-                case .gigantamax:
-                    if showGigantamax { gmaxTotal += 1; if isTracked { gmaxCaught += 1 } }
-                case .female:
-                    if showFemales { femaleTotal += 1; if isTracked { femaleCaught += 1 } }
-                case .other:
-                    if showOtherForms { otherTotal += 1; if isTracked { otherCaught += 1 } }
+                case .mega: shouldCount = showMegas
+                case .gigantamax: shouldCount = showGigantamax
+                case .female: shouldCount = showFemales
+                case .other: shouldCount = showOtherForms
                 }
+                guard shouldCount else { continue }
+
+                let key = "\(p.dexNumber)_\(sprite.form)"
+                let isCaught = caughtByKey[key] != nil
+                let isShiny = shinyByKey[key] != nil
+                let isOrigin = originByKey[key] != nil
+
+                caughtForms[category, default: (0, 0)].total += 1
+                if isCaught { caughtForms[category, default: (0, 0)].caught += 1 }
+                shinyForms[category, default: (0, 0)].total += 1
+                if isShiny { shinyForms[category, default: (0, 0)].caught += 1 }
+                originForms[category, default: (0, 0)].total += 1
+                if isOrigin { originForms[category, default: (0, 0)].caught += 1 }
             }
         }
 
-        return StatTotals(
-            baseCaught: baseCaught, baseTotal: baseTotal,
-            megaCaught: megaCaught, megaTotal: megaTotal,
-            gmaxCaught: gmaxCaught, gmaxTotal: gmaxTotal,
-            femaleCaught: femaleCaught, femaleTotal: femaleTotal,
-            otherCaught: otherCaught, otherTotal: otherTotal
+        return (
+            caught: StatTotals(baseCaught: caughtBase, baseTotal: baseTotal, formStats: caughtForms),
+            shiny: StatTotals(baseCaught: shinyBase, baseTotal: baseTotal, formStats: shinyForms),
+            origin: StatTotals(baseCaught: originBase, baseTotal: baseTotal, formStats: originForms)
         )
     }
 }
 
 // MARK: - Data
 
-private enum FormToggle {
-    case mega, gigantamax, female, other
-
-    var label: String {
-        switch self {
-        case .mega: "Mega"
-        case .gigantamax: "Gigantamax"
-        case .female: "Female"
-        case .other: "Other"
-        }
-    }
-}
-
 private struct StatTotals {
     var baseCaught: Int
     var baseTotal: Int
-    var megaCaught: Int = 0
-    var megaTotal: Int = 0
-    var gmaxCaught: Int = 0
-    var gmaxTotal: Int = 0
-    var femaleCaught: Int = 0
-    var femaleTotal: Int = 0
-    var otherCaught: Int = 0
-    var otherTotal: Int = 0
+    var formStats: [FormCategory: (caught: Int, total: Int)] = [:]
 
-    var totalCaught: Int { baseCaught + megaCaught + gmaxCaught + femaleCaught + otherCaught }
-    var totalAll: Int { baseTotal + megaTotal + gmaxTotal + femaleTotal + otherTotal }
-
-    func caught(for toggle: FormToggle) -> Int {
-        switch toggle {
-        case .mega: megaCaught
-        case .gigantamax: gmaxCaught
-        case .female: femaleCaught
-        case .other: otherCaught
-        }
-    }
-
-    func total(for toggle: FormToggle) -> Int {
-        switch toggle {
-        case .mega: megaTotal
-        case .gigantamax: gmaxTotal
-        case .female: femaleTotal
-        case .other: otherTotal
-        }
-    }
+    var totalCaught: Int { baseCaught + formStats.values.reduce(0) { $0 + $1.caught } }
+    var totalAll: Int { baseTotal + formStats.values.reduce(0) { $0 + $1.total } }
 }
 
 // MARK: - Section
@@ -161,7 +133,7 @@ private struct StatSection: View {
     let icon: String
     let color: Color
     let stats: StatTotals
-    let formToggles: [FormToggle]
+    let formCategories: [FormCategory]
     var enabled: Bool = true
     var lockedMessage: String? = nil
 
@@ -190,10 +162,9 @@ private struct StatSection: View {
 
             StatRow(label: "Pokemon", count: stats.baseCaught, total: stats.baseTotal, color: color)
 
-            ForEach(formToggles, id: \.label) { toggle in
-                let total = stats.total(for: toggle)
-                if total > 0 {
-                    StatRow(label: toggle.label, count: stats.caught(for: toggle), total: total, color: color, isSubrow: true)
+            ForEach(formCategories, id: \.label) { category in
+                if let stat = stats.formStats[category], stat.total > 0 {
+                    StatRow(label: category.label, count: stat.caught, total: stat.total, color: color, isSubrow: true)
                 }
             }
 

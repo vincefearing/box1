@@ -8,15 +8,9 @@ struct PokemonCard: View {
     var displayDexNumber: Int?
     var form: String = "default"
 
-    private var spriteUrl: String? {
-        let sprite = pokemon.sprites.first { $0.form == form }
-        if isShiny { return sprite?.shinyUrl ?? sprite?.normalUrl }
-        return sprite?.normalUrl
-    }
-
     var body: some View {
         VStack(spacing: 8) {
-            SpriteImage(dexNumber: pokemon.dexNumber, form: form, shiny: isShiny, remoteUrl: spriteUrl)
+            SpriteImage(dexNumber: pokemon.dexNumber, form: form, shiny: isShiny, remoteUrl: pokemon.spriteUrl(form: form, shiny: isShiny))
                 .saturation(isCaught ? 1 : 0)
                 .opacity(isCaught ? 1 : 0.5)
                 .frame(height: 80)
@@ -35,14 +29,14 @@ struct PokemonCard: View {
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 3) {
-                if let iconName = formIconName {
-                    Image("FormIcons/\(iconName)")
+                if let category = FormCategory.categorize(form) {
+                    Image("FormIcons/\(category.iconName)")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 10, height: 10)
                         .foregroundStyle(.white)
                         .padding(3)
-                        .background(isCaught ? formIconColor : Color(.systemGray4), in: Circle())
+                        .background(isCaught ? category.iconColor : Color(.systemGray4), in: Circle())
                 }
                 Text(pokemon.name.capitalized)
                     .fontWeight(.medium)
@@ -54,37 +48,12 @@ struct PokemonCard: View {
         .padding(.horizontal, 4)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(isCaught ? typeColor.opacity(0.15) : Color(.systemGray6))
+                .fill(isCaught ? pokemon.primaryTypeColor.opacity(0.15) : Color(.systemGray6))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(isOrigin ? typeColor.opacity(0.6) : .clear, lineWidth: 2)
+                .strokeBorder(isOrigin ? pokemon.primaryTypeColor.opacity(0.6) : .clear, lineWidth: 2)
         )
         .animation(.easeInOut(duration: 0.3), value: isCaught)
-    }
-
-    private var formIconName: String? {
-        guard let category = FormCategory.categorize(form) else { return nil }
-        switch category {
-        case .mega: return "mega"
-        case .gigantamax: return "gmax"
-        case .female: return "female"
-        case .other: return "other-form"
-        }
-    }
-
-    private var formIconColor: Color {
-        guard let category = FormCategory.categorize(form) else { return .clear }
-        switch category {
-        case .mega: return .purple
-        case .gigantamax: return .red
-        case .female: return .pink
-        case .other: return .orange
-        }
-    }
-
-    private var typeColor: Color {
-        guard let hex = pokemon.types.first?.color else { return .gray }
-        return Color(hex: hex)
     }
 }

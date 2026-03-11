@@ -1,5 +1,5 @@
 import SwiftData
-import Foundation
+import SwiftUI
 
 @Model
 class CachedPokemon {
@@ -35,5 +35,22 @@ class CachedPokemon {
 
     var evolutionChain: Pokemon.EvolutionNode? {
         try? JSONDecoder().decode(Pokemon.EvolutionNode.self, from: evolutionChainData)
+    }
+
+    func spriteUrl(form: String, shiny: Bool) -> String? {
+        let sprite = sprites.first { $0.form == form }
+        if shiny { return sprite?.shinyUrl ?? sprite?.normalUrl }
+        return sprite?.normalUrl
+    }
+
+    var primaryTypeColor: Color {
+        guard let hex = types.first?.color else { return .gray }
+        return Color(hex: hex)
+    }
+
+    func displayName(form: String) -> String {
+        if form == "default" { return name.capitalized }
+        let formLabel = form.replacingOccurrences(of: "-", with: " ").capitalized
+        return "\(formLabel) \(name.capitalized)"
     }
 }

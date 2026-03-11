@@ -1,4 +1,5 @@
 import AVFoundation
+import UIKit
 
 final class SoundService {
     static let shared = SoundService()
@@ -27,5 +28,14 @@ final class SoundService {
         guard let player = players[name] else { return }
         player.currentTime = 0
         player.play()
+    }
+
+    func playCatchFeedback() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        play("music_pipe_ramp_up")
+    }
+
+    func playUncatch() {
+        play("slide_drop")
     }
 }

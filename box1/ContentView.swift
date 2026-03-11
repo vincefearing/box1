@@ -33,13 +33,12 @@ struct ContentView: View {
             guard cachedPokemon.isEmpty else { return }
             do {
                 let service = PokemonService()
-                let pokemon = try await service.fetchAllPokemon()
+                async let pokemonFetch = service.fetchAllPokemon()
+                async let gamesFetch = service.fetchAllGames()
+                let (pokemon, games) = try await (pokemonFetch, gamesFetch)
                 try service.saveAllPokemon(pokemon, context: modelContext)
-                print("Saved \(pokemon.count) Pokemon to local storage")
-
-                let games = try await service.fetchAllGames()
                 try service.saveAllGames(games, context: modelContext)
-                print("Saved \(games.count) games to local storage")
+                print("Saved \(pokemon.count) Pokemon and \(games.count) games to local storage")
             } catch {
                 print("Error: \(error)")
             }
