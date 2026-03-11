@@ -4,16 +4,29 @@ struct FilterSheetView: View {
     @Binding var selectedTypes: Set<String>
     @Binding var selectedGeneration: Int?
     @Binding var showMissingOnly: Bool
+    @Binding var filterMegas: Bool
+    @Binding var filterFemales: Bool
+    @Binding var filterGigantamax: Bool
+    @Binding var filterOtherForms: Bool
+    @AppStorage("showMegas") private var showMegas = false
+    @AppStorage("showFemales") private var showFemales = false
+    @AppStorage("showGigantamax") private var showGigantamax = false
+    @AppStorage("showOtherForms") private var showOtherForms = false
     @Environment(\.dismiss) private var dismiss
     @Environment(StoreManager.self) private var storeManager
     @State private var showUpgrade = false
 
     private var isPremium: Bool { storeManager.isPurchased }
 
-    init(selectedTypes: Binding<Set<String>>, selectedGeneration: Binding<Int?>, showMissingOnly: Binding<Bool>) {
+    init(selectedTypes: Binding<Set<String>>, selectedGeneration: Binding<Int?>, showMissingOnly: Binding<Bool>,
+         filterMegas: Binding<Bool>, filterFemales: Binding<Bool>, filterGigantamax: Binding<Bool>, filterOtherForms: Binding<Bool>) {
         self._selectedTypes = selectedTypes
         self._selectedGeneration = selectedGeneration
         self._showMissingOnly = showMissingOnly
+        self._filterMegas = filterMegas
+        self._filterFemales = filterFemales
+        self._filterGigantamax = filterGigantamax
+        self._filterOtherForms = filterOtherForms
         self._isTypeExpanded = State(initialValue: !selectedTypes.wrappedValue.isEmpty)
     }
 
@@ -81,6 +94,15 @@ struct FilterSheetView: View {
                     }
                 }
 
+                if showMegas || showGigantamax || showFemales || showOtherForms {
+                    Section("Forms") {
+                        if showMegas { Toggle("Mega", isOn: $filterMegas) }
+                        if showGigantamax { Toggle("Gigantamax", isOn: $filterGigantamax) }
+                        if showFemales { Toggle("Female", isOn: $filterFemales) }
+                        if showOtherForms { Toggle("Other Forms", isOn: $filterOtherForms) }
+                    }
+                }
+
                 Section {
                     Toggle("Show Missing Only", isOn: $showMissingOnly)
                 }
@@ -95,6 +117,10 @@ struct FilterSheetView: View {
                             selectedTypes.removeAll()
                             selectedGeneration = nil
                             showMissingOnly = false
+                            filterMegas = true
+                            filterFemales = true
+                            filterGigantamax = true
+                            filterOtherForms = true
                         }
                     }
                 }
@@ -113,6 +139,8 @@ struct FilterSheetView: View {
 
     private var hasActiveFilters: Bool {
         !selectedTypes.isEmpty || selectedGeneration != nil || showMissingOnly
+        || (showMegas && !filterMegas) || (showFemales && !filterFemales)
+        || (showGigantamax && !filterGigantamax) || (showOtherForms && !filterOtherForms)
     }
 
     private func typePill(name: String, hex: String) -> some View {

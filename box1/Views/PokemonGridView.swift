@@ -38,6 +38,10 @@ struct PokemonGridView: View {
     @State private var selectedGeneration: Int?
     @State private var showMissingOnly = false
     @State private var showFilterSheet = false
+    @State private var filterMegas = true
+    @State private var filterFemales = true
+    @State private var filterGigantamax = true
+    @State private var filterOtherForms = true
     @State private var sortOption: SortOption = .numberAsc
     @AppStorage("showMegas") private var showMegas = false
     @AppStorage("showFemales") private var showFemales = false
@@ -88,6 +92,8 @@ struct PokemonGridView: View {
 
     private var hasActiveFilters: Bool {
         !selectedTypes.isEmpty || selectedGeneration != nil || showMissingOnly
+        || (showMegas && !filterMegas) || (showFemales && !filterFemales)
+        || (showGigantamax && !filterGigantamax) || (showOtherForms && !filterOtherForms)
     }
 
     private var selectedGameIds: Set<Int>? {
@@ -158,10 +164,10 @@ struct PokemonGridView: View {
                 guard let category = FormCategory.categorize(sprite.form),
                       FormCategory.isFormAvailable(sprite.form, forGameGroup: selectedGameGroup) else { continue }
                 switch category {
-                case .mega: if showMegas { items.append(PokemonGridItem(pokemon: mon, form: sprite.form)) }
-                case .gigantamax: if showGigantamax { items.append(PokemonGridItem(pokemon: mon, form: sprite.form)) }
-                case .female: if showFemales { items.append(PokemonGridItem(pokemon: mon, form: sprite.form)) }
-                case .other: if showOtherForms { items.append(PokemonGridItem(pokemon: mon, form: sprite.form)) }
+                case .mega: if showMegas && filterMegas { items.append(PokemonGridItem(pokemon: mon, form: sprite.form)) }
+                case .gigantamax: if showGigantamax && filterGigantamax { items.append(PokemonGridItem(pokemon: mon, form: sprite.form)) }
+                case .female: if showFemales && filterFemales { items.append(PokemonGridItem(pokemon: mon, form: sprite.form)) }
+                case .other: if showOtherForms && filterOtherForms { items.append(PokemonGridItem(pokemon: mon, form: sprite.form)) }
                 }
             }
             return items
@@ -268,7 +274,11 @@ struct PokemonGridView: View {
                 FilterSheetView(
                     selectedTypes: $selectedTypes,
                     selectedGeneration: $selectedGeneration,
-                    showMissingOnly: $showMissingOnly
+                    showMissingOnly: $showMissingOnly,
+                    filterMegas: $filterMegas,
+                    filterFemales: $filterFemales,
+                    filterGigantamax: $filterGigantamax,
+                    filterOtherForms: $filterOtherForms
                 )
             }
             .sheet(isPresented: $showUpgrade) {
