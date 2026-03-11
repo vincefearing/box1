@@ -11,6 +11,10 @@ struct box1App: App {
         [nil, .light, .dark][appearance]
     }
 
+    init() {
+        UserDefaults.standard.register(defaults: ["soundEnabled": true])
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

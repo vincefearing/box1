@@ -25,7 +25,8 @@ final class SoundService {
     }
 
     func play(_ name: String) {
-        guard let player = players[name] else { return }
+        guard UserDefaults.standard.bool(forKey: "soundEnabled"),
+              let player = players[name] else { return }
         player.currentTime = 0
         player.play()
     }

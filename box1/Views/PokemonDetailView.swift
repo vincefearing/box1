@@ -14,6 +14,7 @@ struct PokemonDetailView: View {
     @AppStorage("trackOrigin") private var trackOrigin = false
     @AppStorage("selectedGameGroup") private var selectedGameGroup: String = ""
     @AppStorage("dismissUncatchWarning") private var dismissUncatchWarning = false
+    @AppStorage("soundEnabled") private var soundEnabled = true
     @State private var audioPlayer: AVPlayer?
     @State private var showUncatchAlert = false
     @State private var pendingUncatchAction: (() -> Void)?
@@ -53,14 +54,20 @@ struct PokemonDetailView: View {
                     .font(.title2)
                     .fontWeight(.bold)
                 typeSection
-                nicknameSection
+                if isCaught {
+                    nicknameSection
+                }
                 statsSection
                 if let description = pokemon.pokemonDescription, !description.isEmpty {
                     descriptionSection(description)
                 }
-                crySection
+                if soundEnabled {
+                    crySection
+                }
                 actionSection
-                notesSection
+                if isCaught {
+                    notesSection
+                }
                 locationSection
             }
             .padding()

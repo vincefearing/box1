@@ -1,8 +1,11 @@
 import SwiftUI
+import SwiftData
 
 struct ProfileView: View {
     @Environment(AuthManager.self) private var authManager
     @Environment(StoreManager.self) private var storeManager
+    @Environment(\.modelContext) private var modelContext
+    @Query private var userPokemon: [UserPokemon]
     @AppStorage("showMegas") private var showMegas = false
     @AppStorage("showFemales") private var showFemales = false
     @AppStorage("showGigantamax") private var showGigantamax = false
@@ -10,8 +13,10 @@ struct ProfileView: View {
     @AppStorage("trackShiny") private var trackShiny = false
     @AppStorage("trackOrigin") private var trackOrigin = false
     @AppStorage("dismissUncatchWarning") private var dismissUncatchWarning = false
+    @AppStorage("soundEnabled") private var soundEnabled = true
     @AppStorage("appearance") private var appearance = 0
     @State private var showUpgrade = false
+    @State private var showResetConfirmation = false
 
     private var isPremium: Bool { storeManager.isPurchased }
 
@@ -47,6 +52,10 @@ struct ProfileView: View {
                     Text("Dark").tag(2)
                 }
                 .pickerStyle(.segmented)
+            }
+
+            Section("Audio") {
+                Toggle("Sound Effects", isOn: $soundEnabled)
             }
 
             Section("Pokedex") {
@@ -95,6 +104,16 @@ struct ProfileView: View {
             }
 
             Section {
+                Button("Reset Pokedex", role: .destructive) {
+                    showResetConfirmation = true
+                }
+                .confirmationDialog("Reset Pokedex?", isPresented: $showResetConfirmation, titleVisibility: .visible) {
+                    Button("Reset All Data", role: .destructive, action: resetPokedex)
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("This will delete all caught Pokemon, nicknames, notes, and tracking data. This cannot be undone.")
+                }
+
                 Button("Sign Out", role: .destructive) {
                     Task { try? await authManager.signOut() }
                 }
@@ -103,6 +122,12 @@ struct ProfileView: View {
         .navigationTitle("Settings")
         .sheet(isPresented: $showUpgrade) {
             PremiumUpgradeView()
+        }
+    }
+
+    private func resetPokedex() {
+        for entry in userPokemon {
+            modelContext.delete(entry)
         }
     }
 
